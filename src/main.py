@@ -80,5 +80,5 @@ test_df["normalized_text"] = test_df["no_stopwords_text"].apply(
     preprocessor.normalize_token
 )
 
-display(train_df.head())
-display(test_df.head())
+print(train_df.head())
+print(test_df.head())
