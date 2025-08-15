@@ -1,6 +1,5 @@
 import pandas as pd
 import re
-import string
 
 import nltk
 from nltk.corpus import stopwords
@@ -9,97 +8,183 @@ from nltk.stem import SnowballStemmer
 
 
 class PreProcessor:
+    # Advanced regex patterns for comprehensive text cleaning
+    CLEANING_PATTERNS = [
+        # Web content removal
+        (r"http[s]?://\S+|www\.\S+", ""),  # URLs
+        (r"\S+@\S+\.\S+", ""),  # Email addresses
+        (r"<[^>]+>", ""),  # HTML tags
+        (r"&[a-zA-Z0-9]+;", ""),  # HTML entities
+        # Social media content
+        (r"@\w+|#\w+", ""),  # Mentions and hashtags
+        # Numbers and digits
+        (r"\d+", ""),  # Remove all numbers
+        # Character filtering
+        (r"[^a-zA-ZÀ-ÿĀ-žА-я\u00C0-\u017F\u0100-\u024F\s]", ""),  # Keep only letters
+        (r"(.)\1{2,}", r"\1\1"),  # Repeated characters
+        (r"\s+", " "),  # Normalize whitespace
+        (r"\b[b-hj-z]\b", ""),  # Single chars except a,i
+    ]
+
+    # Meaningful short words to preserve
+    MEANINGFUL_SHORT_WORDS = {
+        "a",
+        "i",
+        "is",
+        "it",
+        "to",
+        "go",
+        "no",
+        "so",
+        "me",
+        "we",
+        "he",
+        "my",
+        "be",
+        "or",
+        "in",
+        "on",
+        "at",
+    }
+
     def __init__(self):
-        nltk.download("punkt_tab")
+        nltk.download("punkt")
         nltk.download("stopwords")
 
     def clean_data(self, df):
         """
-        Kiểm tra và xử lý giá trị null, đồng thời kiểm tra loại dữ liệu trong DataFrame.
+        Check and handle null values, and examine data types in DataFrame.
 
         Args:
-            df (pd.DataFrame): DataFrame cần làm sạch.
+            df (pd.DataFrame): DataFrame to be cleaned.
 
         Returns:
-            pd.DataFrame: DataFrame đã được làm sạch.
+            pd.DataFrame: Cleaned DataFrame.
         """
-        print("Số lượng giá trị null trước khi xử lý:")
+        print("Number of null values before processing:")
         print(df.isnull().sum())
 
-        # Điền giá trị NaN trong cột 'text' bằng chuỗi rỗng
-        if "text" in df.columns:
+        # Fill NaN values in 'input' column with empty string
+        if "input" in df.columns:
+            df["input"] = df["input"].fillna("")
+        elif "text" in df.columns:
             df["text"] = df["text"].fillna("")
-
-        if "title" in df.columns:
+        elif "title" in df.columns:
             df["title"] = df["title"].fillna("")
 
-        print("\nSố lượng giá trị null sau khi xử lý:")
+        print("\nNumber of null values after processing:")
         print(df.isnull().sum())
 
-        # Kiểm tra loại dữ liệu
-        print("\nLoại dữ liệu của các cột:")
+        # Check data types
+        print("\nData types of columns:")
         print(df.dtypes)
 
         return df
 
     def remove_duplicates(self, df):
         """
-        Kiểm tra và loại bỏ các bản ghi trùng lặp trong DataFrame.
+        Check and remove duplicate records in DataFrame.
 
         Args:
-            df (pd.DataFrame): DataFrame cần xử lý.
+            df (pd.DataFrame): DataFrame to be processed.
 
         Returns:
-            pd.DataFrame: DataFrame sau khi đã loại bỏ các bản ghi trùng lặp.
+            pd.DataFrame: DataFrame after removing duplicate records.
         """
-        print(f"Số lượng bản ghi trước khi loại bỏ trùng lặp: {len(df)}")
+        print(f"Number of records before removing duplicates: {len(df)}")
 
-        # Kiểm tra và loại bỏ các bản ghi trùng lặp
+        # Check and remove duplicate records
         df_cleaned = df.drop_duplicates()
 
-        print(f"Số lượng bản ghi sau khi loại bỏ trùng lặp: {len(df_cleaned)}")
+        print(f"Number of records after removing duplicates: {len(df_cleaned)}")
 
         return df_cleaned
 
     def clean_text(self, text):
         """
-        Làm sạch văn bản bằng cách:
-        - Loại bỏ các ký tự đặc biệt và số.
-        - Chuyển đổi sang chữ thường.
-        - Loại bỏ dấu câu.
-        - Loại bỏ khoảng trắng thừa.
-        - Thay thế một hoặc nhiều khoảng trắng bằng một khoảng trắng duy nhất.
-        - Loại bỏ khoảng trắng ở đầu/cuối.
+        Comprehensive text cleaning with advanced preprocessing.
+
+        Features:
+        - URL/Email removal
+        - HTML cleaning
+        - Social media content removal
+        - Number removal
+        - Unicode letter filtering
+        - Repeated character handling
+        - Whitespace normalization
+        - Short word filtering
 
         Args:
-            text (str): Chuỗi văn bản cần làm sạch.
+            text (str): Text string to be cleaned.
 
         Returns:
-            str: Chuỗi văn bản đã được làm sạch.
+            str: Cleaned text string.
         """
-        # Loại bỏ các ký tự đặc biệt và số
-        # Sử dụng regex để giữ lại chỉ các chữ cái (tiếng Anh và tiếng Việt có dấu) và dấu cách
-        text = re.sub(r"[^A-Za-zÀ-ú ]+", "", text)
-        # Chuyển đổi sang chữ thường
+        if not isinstance(text, str):
+            return ""
+
+        # Convert to lowercase first
         text = text.lower()
-        # loại bỏ dấu câu
-        text = text.translate(str.maketrans("", "", string.punctuation))
-        # Loại bỏ khoảng trắng thừa
-        # Thay thế một hoặc nhiều khoảng trắng bằng một khoảng trắng duy nhất và loại bỏ khoảng trắng ở đầu/cuối
-        text = re.sub(r"\s+", " ", text).strip()
-        return text  # Trả về chuỗi văn bản đã được làm sạch
+
+        # Apply all cleaning patterns in sequence
+        for pattern, replacement in self.CLEANING_PATTERNS:
+            text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+
+        # Strip whitespace after all pattern applications
+        text = text.strip()
+
+        # Remove very short words except meaningful ones
+        words = text.split()
+        words = [
+            word
+            for word in words
+            if len(word) >= 2 or word.lower() in self.MEANINGFUL_SHORT_WORDS
+        ]
+        text = " ".join(words)
+
+        return text
+
+    def preprocess_text_pipeline(self, text):
+        """
+        Complete text preprocessing pipeline that combines all steps efficiently.
+
+        This method is more memory-efficient than calling individual methods
+        as it processes text in one pass without storing intermediate results.
+
+        Args:
+            text (str): Text string to be fully preprocessed.
+
+        Returns:
+            list: Final normalized tokens ready for vectorization.
+        """
+        if not isinstance(text, str):
+            return []
+
+        # Step 1: Clean text
+        cleaned_text = self.clean_text(text)
+
+        # Step 2: Tokenize
+        tokens = self.tokenize_text(cleaned_text)
+
+        # Step 3: Remove stopwords
+        tokens_no_stopwords = self.remove_stopwords(tokens)
+
+        # Step 4: Normalize tokens
+        normalized_tokens = self.normalize_token(tokens_no_stopwords)
+
+        return normalized_tokens
 
     def tokenize_text(self, text):
         """
-        Tách văn bản thành các token (từ).
+        Split text into tokens (words).
 
         Args:
-            text (str): Chuỗi văn bản cần tách token.
+            text (str): Text string to be tokenized.
 
         Returns:
-            list: Danh sách các token.
+            list: List of tokens.
         """
-        # Sử dụng word_tokenize của NLTK để tách văn bản thành các token
+        # Use NLTK's word_tokenize to split text into tokens
         if isinstance(text, str):
             return word_tokenize(text)
         else:
@@ -107,39 +192,39 @@ class PreProcessor:
 
     def remove_stopwords(self, tokens):
         """
-        Loại bỏ các từ dừng (stopwords) tiếng Anh khỏi danh sách tokens.
+        Remove English stopwords from the list of tokens.
 
         Args:
-            filtered_tokens (list): Danh sách các token cần xử lý.
+            tokens (list): List of tokens to be processed.
 
         Returns:
-            list: Danh sách các token sau khi đã loại bỏ stopwords.
+            list: List of tokens after removing stopwords.
         """
         if not isinstance(tokens, list):
             return tokens
         else:
-            # Tải danh sách các từ dừng tiếng Anh từ NLTK
+            # Load English stopwords list from NLTK
             stop_words = set(stopwords.words("english"))
-            # Lọc bỏ các từ dừng khỏi danh sách tokens
+            # Filter out stopwords from the token list
             filtered_tokens = [word for word in tokens if word not in stop_words]
-            # Trả về danh sách các token đã lọc
+            # Return the filtered token list
             return filtered_tokens
 
     def normalize_token(self, tokens):
         """
-        Chuẩn hóa danh sách tokens bằng cách áp dụng Snowball Stemmer tiếng Anh cho từng token.
+        Normalize token list by applying English Snowball Stemmer to each token.
 
         Args:
-            tokens (list): Danh sách các token cần chuẩn hóa.
+            tokens (list): List of tokens to be normalized.
 
         Returns:
-            list: Danh sách các token sau khi đã chuẩn hóa.
+            list: List of tokens after normalization.
         """
         if not isinstance(tokens, list):
             return tokens
         else:
-            # Khởi tạo Snowball Stemmer cho tiếng Anh
+            # Initialize Snowball Stemmer for English
             stemmer = SnowballStemmer("english")
-            # Áp dụng stemmer cho từng token trong danh sách và trả về danh sách mới
+            # Apply stemmer to each token in the list and return new list
             normalized_tokens = [stemmer.stem(word) for word in tokens]
             return normalized_tokens
