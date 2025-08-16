@@ -48,7 +48,6 @@ class TFIDFVectorizer:
         Returns:
             self: Return this object to enable method chaining
         """
-        # Convert tokens to text if needed
         if isinstance(text_data, pd.Series):
             processed_text = text_data.apply(self.preprocess_tokens_to_text)
         else:
@@ -79,7 +78,6 @@ class TFIDFVectorizer:
                 "Vectorizer has not been trained. Please call fit() method first."
             )
 
-        # Convert tokens to text if needed
         if isinstance(text_data, pd.Series):
             processed_text = text_data.apply(self.preprocess_tokens_to_text)
         else:
@@ -134,11 +132,9 @@ class TFIDFVectorizer:
                 "Vectorizer has not been trained. Please call fit() method first."
             )
 
-        # Calculate average TF-IDF score for each feature
         mean_scores = np.array(tfidf_matrix.mean(axis=0)).flatten()
         feature_names = self.get_feature_names()
 
-        # Create list of (feature, score) and sort
         feature_scores = list(zip(feature_names, mean_scores))
         feature_scores.sort(key=lambda x: x[1], reverse=True)
 

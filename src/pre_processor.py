@@ -64,7 +64,6 @@ class PreProcessor:
         print("Number of null values before processing:")
         print(df.isnull().sum())
 
-        # Fill NaN values in 'input' column with empty string
         if "input" in df.columns:
             df["input"] = df["input"].fillna("")
         elif "text" in df.columns:
@@ -75,7 +74,6 @@ class PreProcessor:
         print("\nNumber of null values after processing:")
         print(df.isnull().sum())
 
-        # Check data types
         print("\nData types of columns:")
         print(df.dtypes)
 
@@ -93,7 +91,6 @@ class PreProcessor:
         """
         print(f"Number of records before removing duplicates: {len(df)}")
 
-        # Check and remove duplicate records
         df_cleaned = df.drop_duplicates()
 
         print(f"Number of records after removing duplicates: {len(df_cleaned)}")
@@ -123,17 +120,13 @@ class PreProcessor:
         if not isinstance(text, str):
             return ""
 
-        # Convert to lowercase first
         text = text.lower()
 
-        # Apply all cleaning patterns in sequence
         for pattern, replacement in self.CLEANING_PATTERNS:
             text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
 
-        # Strip whitespace after all pattern applications
         text = text.strip()
 
-        # Remove very short words except meaningful ones
         words = text.split()
         words = [
             word
@@ -160,16 +153,12 @@ class PreProcessor:
         if not isinstance(text, str):
             return []
 
-        # Step 1: Clean text
         cleaned_text = self.clean_text(text)
 
-        # Step 2: Tokenize
         tokens = self.tokenize_text(cleaned_text)
 
-        # Step 3: Remove stopwords
         tokens_no_stopwords = self.remove_stopwords(tokens)
 
-        # Step 4: Normalize tokens
         normalized_tokens = self.normalize_token(tokens_no_stopwords)
 
         return normalized_tokens
@@ -184,7 +173,6 @@ class PreProcessor:
         Returns:
             list: List of tokens.
         """
-        # Use NLTK's word_tokenize to split text into tokens
         if isinstance(text, str):
             return word_tokenize(text)
         else:
@@ -203,11 +191,8 @@ class PreProcessor:
         if not isinstance(tokens, list):
             return tokens
         else:
-            # Load English stopwords list from NLTK
             stop_words = set(stopwords.words("english"))
-            # Filter out stopwords from the token list
             filtered_tokens = [word for word in tokens if word not in stop_words]
-            # Return the filtered token list
             return filtered_tokens
 
     def normalize_token(self, tokens):
@@ -223,8 +208,6 @@ class PreProcessor:
         if not isinstance(tokens, list):
             return tokens
         else:
-            # Initialize Snowball Stemmer for English
             stemmer = SnowballStemmer("english")
-            # Apply stemmer to each token in the list and return new list
             normalized_tokens = [stemmer.stem(word) for word in tokens]
             return normalized_tokens
