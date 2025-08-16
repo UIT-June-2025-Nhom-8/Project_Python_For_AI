@@ -116,35 +116,31 @@ class PreProcessor:
 
     def clean_data(self, df):
         """
-        Clean DataFrame với các bước tối ưu hóa
+        Clean DataFrame by handling null values and checking data types.
+        Does not read from files - processes DataFrame passed as parameter.
+        Based on notebook Part 3 - Data cleaning
+        
+        Args:
+            df (pd.DataFrame): Input DataFrame to clean
+            
+        Returns:
+            pd.DataFrame: Cleaned DataFrame with nulls handled
         """
-        print("Cleaning data with enhanced methods...")
+        print("Checking for missing values in each column:")
+        print(df.isnull().sum())
         
-        # Kiểm tra missing values
-        missing_before = df.isnull().sum().sum()
-        print(f"Missing values before cleaning: {missing_before}")
+        # Remove columns that have any NaN value
+        df = df.dropna(axis=1)
         
-        # Xử lý missing values thông minh hơn
+        print("Remaining columns after removing columns with NaN:")
+        print(df.isnull().sum())
+        
+        # Handle text columns specifically
         if "text" in df.columns:
-            df["text"] = df["text"].fillna("")
+            df.loc[:, "text"] = df.loc[:, "text"].fillna("")
         if "title" in df.columns:
-            df["title"] = df["title"].fillna("")
+            df.loc[:, "title"] = df.loc[:, "title"].fillna("")
             
-        # Kết hợp title và text nếu có cả hai
-        if "title" in df.columns and "text" in df.columns:
-            df["combined_text"] = df["title"].astype(str) + " " + df["text"].astype(str)
-        elif "text" in df.columns:
-            df["combined_text"] = df["text"].astype(str)
-        else:
-            df["combined_text"] = ""
-            
-        # Loại bỏ các dòng có text quá ngắn (có thể là noise)
-        df = df[df["combined_text"].str.len() > 10].reset_index(drop=True)
-        
-        missing_after = df.isnull().sum().sum()
-        print(f"Missing values after cleaning: {missing_after}")
-        print(f"Rows removed due to short text: {len(df)}")
-        
         return df
 
     def remove_duplicates(self, df):
