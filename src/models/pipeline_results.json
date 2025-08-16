@@ -1,31 +1,47 @@
 {
   "pipeline_info": {
-    "train_samples": 10000,
+    "train_samples": 9998,
     "test_samples": 1000,
     "sentiment_distribution": {
-      "Negative": 5098,
-      "Positive": 4902
+      "Negative": 5097,
+      "Positive": 4901
     }
   },
   "ml_results": {
     "best_model": "LogisticRegression",
-    "best_accuracy": 0.8485,
+    "best_accuracy": 0.8615,
     "all_models": {
       "GradientBoosting": {
-        "train_accuracy": 0.966,
-        "test_accuracy": 0.8395
+        "train_accuracy": 0.9681,
+        "test_accuracy": 0.828
       },
       "RandomForest": {
-        "train_accuracy": 0.8971,
-        "test_accuracy": 0.8475
+        "train_accuracy": 0.8955,
+        "test_accuracy": 0.8265
       },
       "LogisticRegression": {
-        "train_accuracy": 0.9211,
-        "test_accuracy": 0.8485
+        "train_accuracy": 0.9381,
+        "test_accuracy": 0.8615
       }
     }
   },
-  "test_predictions": [],
+  "test_predictions": [
+    {
+      "text": "This product is absolutely amazing! Love it so muc",
+      "prediction": "Positive",
+      "confidence": 0.954
+    },
+    {
+      "text": "Terrible quality, complete waste of money.",
+      "prediction": "Negative",
+      "confidence": 0.966
+    },
+    {
+      "text": "Good value for the price, works as expected.",
+      "prediction": "Positive",
+      "confidence": 0.948
+    }
+  ],
   "saved_models": [
     "models/gradient_boosting_model.pkl",
     "models/random_forest_model.pkl",
