@@ -3,6 +3,7 @@ import pandas as pd
 from collections import Counter
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
+from stopwords_config import DEFAULT_WORDCLOUD_STOPWORDS
 
 
 class TextAnalyzer:
@@ -139,6 +140,9 @@ class TextAnalyzer:
                 background_color="white",
                 max_words=100,
                 colormap="viridis",
+                stopwords=DEFAULT_WORDCLOUD_STOPWORDS,
+                relative_scaling=True,
+                min_font_size=10,
             ).generate(joined_sentences)
 
             plt.figure(figsize=figsize)
@@ -312,7 +316,10 @@ class TextAnalyzer:
 
         print(f"\nWord Frequency Report (min frequency: {min_frequency}):")
         print(f"   Words included: {len(word_freq_df):,}")
-        print(f"   Coverage: {word_freq_df['percentage'].sum():.2f}% of total words")
+        if not word_freq_df.empty:
+            print(
+                f"   Coverage: {word_freq_df['percentage'].sum():.2f}% of total words"
+            )
 
         return word_freq_df
 

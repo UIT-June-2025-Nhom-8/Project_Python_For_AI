@@ -5,6 +5,7 @@ import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import SnowballStemmer
+from stopwords_config import DEFAULT_PREPROCESSING_STOPWORDS
 
 
 class PreProcessor:
@@ -191,7 +192,8 @@ class PreProcessor:
         if not isinstance(tokens, list):
             return tokens
         else:
-            stop_words = set(stopwords.words("english"))
+            # Use centralized stopwords configuration
+            stop_words = DEFAULT_PREPROCESSING_STOPWORDS
             filtered_tokens = [word for word in tokens if word not in stop_words]
             return filtered_tokens
 

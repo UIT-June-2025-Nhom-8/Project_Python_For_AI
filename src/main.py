@@ -86,7 +86,7 @@ train_analysis = text_analyzer.analyze_text_statistics(train_df, "input")
 print("\n2. WORD CLOUD GENERATION")
 try:
     text_analyzer.generate_wordcloud(
-        train_df, "input", figsize=(12, 6), save_path="wordcloud_train.png"
+        train_df, "input", figsize=(12, 6), save_path="src/images/wordcloud_train.png"
     )
 except Exception as e:
     print(f"   Could not generate word cloud: {e}")
@@ -136,7 +136,7 @@ except Exception as e:
 
 print(f"\nSaving model...")
 try:
-    model_path = "tfidf_vectorizer.pkl"
+    model_path = "output/models/tfidf_vectorizer.pkl"
     tfidf_vectorizer.save_vectorizer(model_path)
     print(f"   Model saved to: {model_path}")
 except Exception as e:
