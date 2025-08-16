@@ -2,8 +2,8 @@ import pandas as pd
 import os
 import sys
 
-from kaggle_data_loader import KaggleDataLoader
-
+# from kaggle_data_loader import KaggleDataLoader
+from local_data_loader import LocalDataLoader as KaggleDataLoader
 CONFIG = {
     "train_size": 100000,
     "test_size": 10000,
@@ -173,3 +173,24 @@ print(f"   - X_test_tfidf: {X_test_tfidf.shape}")
 print(f"   - y_train: {train_df['label'].shape}")
 print(f"   - y_test: {test_df['label'].shape}")
 print(f"=" * 60)
+
+# Import và khởi tạo ModelTrainer
+from model_trainer import ModelTrainer
+
+print(f"\n=== STARTING MODEL TRAINING PIPELINE ===")
+model_trainer = ModelTrainer(output_dir="reports")
+
+# Chạy training pipeline với tất cả models
+print("Running training pipeline for all models...")
+training_results = model_trainer.run_training_pipeline(
+    train_df=train_df, 
+    test_df=test_df, 
+    optimize_hyperparameters=False,  # Set True nếu muốn tối ưu hyperparameters (tốn thời gian)
+    save_results=True
+)
+
+print(f"\n" + "="*100)
+print("PIPELINE COMPLETED SUCCESSFULLY!")
+print(f"="*100)
+print("Check the 'reports/' directory for detailed JSON results.")
+print(f"="*100)
