@@ -66,7 +66,7 @@ class ModelTrainer:
         
         return combined_df, text_column
         
-    def train_logistic_regression(self, df, text_column, optimize_hyperparameters=False):
+    def train_logistic_regression(self, df, text_column, optimize_hyperparameters=True):
         """
         Train Logistic Regression model
         
@@ -376,9 +376,18 @@ class ModelTrainer:
             else:
                 return obj
         
+        # Remove 'coefficients' field from each model result if present
+        results_to_save = results.copy()
+        if 'individual_results' in results_to_save:
+            for model_name, model_result in results_to_save['individual_results'].items():
+                if isinstance(model_result, dict):
+                    if 'coefficients' in model_result : del model_result['coefficients']
+                    if 'feature_names' in model_result : del model_result['feature_names']
+                    if 'feature_importance' in model_result : del model_result['feature_importance']
+
         # Convert results
-        serializable_results = convert_numpy(results)
-        
+        serializable_results = convert_numpy(results_to_save)
+
         # Lưu file
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(serializable_results, f, indent=2, ensure_ascii=False)

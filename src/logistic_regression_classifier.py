@@ -17,7 +17,7 @@ class LogisticRegressionAnalyzer:
     Lớp phân tích cảm xúc sử dụng Logistic Regression với tối ưu hóa nâng cao
     """
     
-    def __init__(self, optimize_hyperparameters=False):
+    def __init__(self, optimize_hyperparameters=True):
         """
         Khởi tạo các thành phần của LogisticRegressionAnalyzer
         

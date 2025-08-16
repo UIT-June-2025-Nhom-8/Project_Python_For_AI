@@ -5,7 +5,7 @@ import sys
 # from kaggle_data_loader import KaggleDataLoader
 from local_data_loader import LocalDataLoader as KaggleDataLoader
 CONFIG = {
-    "train_size": 100000,
+    "train_size": 100_000,
     "test_size": 10000,
     "tfidf_max_features": 5000,
     "tfidf_min_df": 2,
@@ -13,12 +13,41 @@ CONFIG = {
     "ngram_range": (1, 2),
 }
 
+# OUTPUT_REPORT = "/kaggle/working/reports"
+OUTPUT_REPORT = "reports"
+
 print("=== AMAZON REVIEWS DATA PROCESSING PIPELINE ===")
 print(f"Configuration: {CONFIG}")
+
 
 print("\n=== INITIALIZING DATA LOADER ===")
 data_loader = KaggleDataLoader(CONFIG)
 train_df, test_df = data_loader.prepare_dataframes()
+
+# ===== BALANCE NEGATIVE AND POSITIVE IN TRAIN SET =====
+print("\n=== BALANCING TRAIN DATA (NEGATIVE vs POSITIVE) ===")
+target_train_size = CONFIG["train_size"]
+if "label" in train_df.columns:
+    neg_df = train_df[train_df["label"] == 1]
+    pos_df = train_df[train_df["label"] == 2]
+    n_each = target_train_size // 2
+    # Nếu thiếu thì lấy tối đa có thể
+    neg_sample = neg_df.sample(n=min(n_each, len(neg_df)), random_state=42)
+    pos_sample = pos_df.sample(n=min(n_each, len(pos_df)), random_state=42)
+    # Nếu thiếu số lượng, bổ sung từ class còn lại
+    total = len(neg_sample) + len(pos_sample)
+    if total < target_train_size:
+        # Ưu tiên bổ sung từ class còn lại nếu còn dư
+        if len(neg_df) > len(neg_sample):
+            extra = min(target_train_size - total, len(neg_df) - len(neg_sample))
+            neg_sample = pd.concat([neg_sample, neg_df.drop(neg_sample.index).sample(n=extra, random_state=43)])
+        elif len(pos_df) > len(pos_sample):
+            extra = min(target_train_size - total, len(pos_df) - len(pos_sample))
+            pos_sample = pd.concat([pos_sample, pos_df.drop(pos_sample.index).sample(n=extra, random_state=44)])
+    train_df = pd.concat([neg_sample, pos_sample]).sample(frac=1, random_state=99).reset_index(drop=True)
+    print(f"Train set balanced: negative={sum(train_df['label']==1)}, positive={sum(train_df['label']==2)}, total={len(train_df)}")
+else:
+    print("Warning: 'label' column not found in train_df, skipping balancing step.")
 
 from pre_processor import PreProcessor
 
@@ -40,6 +69,14 @@ test_df = preprocessor.remove_duplicates(test_df)
 test_df = test_df.assign(
     normalized_input=test_df["input"].apply(preprocessor.preprocess_text_pipeline)
 )
+
+print("\n=== MEMORY OPTIMIZATION ===")
+print("Dropping original 'input' column to save memory...")
+print(f"Before: Train memory usage ~{train_df.memory_usage(deep=True).sum() / (1024**2):.2f} MB")
+# Drop original input column to save memory since we have normalized_input
+train_df = train_df.drop('input', axis=1)
+
+print(f"After: Train memory usage ~{train_df.memory_usage(deep=True).sum() / (1024**2):.2f} MB")
 
 print("\n=== POST-PREPROCESSING VALIDATION ===")
 train_empty = (
@@ -81,24 +118,36 @@ print("\n=== TEXT ANALYSIS BEFORE TF-IDF VECTORIZATION ===")
 text_analyzer = TextAnalyzer()
 
 print("\n1. TRAINING DATA ANALYSIS")
-train_analysis = text_analyzer.analyze_text_statistics(train_df, "input")
+# Convert normalized_input (list of tokens) back to text for analysis
+train_df_analysis = train_df.copy()
+train_df_analysis['input'] = train_df_analysis['normalized_input'].apply(
+    lambda tokens: ' '.join(tokens) if isinstance(tokens, list) else str(tokens)
+)
+train_analysis = text_analyzer.analyze_text_statistics(train_df_analysis, "input")
 
 print("\n2. WORD CLOUD GENERATION")
 try:
     text_analyzer.generate_wordcloud(
-        train_df, "input", figsize=(12, 6), save_path="src/images/wordcloud_train.png"
+        train_df_analysis, "input", figsize=(12, 6), save_path="src/images/wordcloud_train.png"
     )
 except Exception as e:
     print(f"   Could not generate word cloud: {e}")
 
 print("\n3. DATASET COMPARISON")
-comparison_results = text_analyzer.compare_datasets(train_df, test_df, "input")
+test_df_analysis = test_df.copy()
+test_df_analysis['input'] = test_df_analysis['normalized_input'].apply(
+    lambda tokens: ' '.join(tokens) if isinstance(tokens, list) else str(tokens)
+)
+comparison_results = text_analyzer.compare_datasets(train_df_analysis, test_df_analysis, "input")
 
 print("\n4. WORD FREQUENCY ANALYSIS")
 word_freq_report = text_analyzer.get_word_frequency_report(min_frequency=5)
 if not word_freq_report.empty:
     print("\nTop 15 words with frequency >= 5:")
     print(word_freq_report.head(15).to_string(index=False))
+
+# Clean up temporary analysis dataframes to save memory
+del train_df_analysis, test_df_analysis
 
 from tf_idf_vectorizer import TFIDFVectorizer
 
@@ -178,7 +227,7 @@ print(f"=" * 60)
 from model_trainer import ModelTrainer
 
 print(f"\n=== STARTING MODEL TRAINING PIPELINE ===")
-model_trainer = ModelTrainer(output_dir="reports")
+model_trainer = ModelTrainer(output_dir=OUTPUT_REPORT)
 
 # Chạy training pipeline với tất cả models
 print("Running training pipeline for all models...")

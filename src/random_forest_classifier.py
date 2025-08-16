@@ -16,7 +16,7 @@ class RandomForestAnalyzer:
     Random Forest Classifier được tối ưu hóa với hyperparameter tuning và feature engineering nâng cao
     """
     
-    def __init__(self, optimize_hyperparameters=False):
+    def __init__(self, optimize_hyperparameters=True):
         """
         Khởi tạo với tùy chọn tối ưu hyperparameters
         
