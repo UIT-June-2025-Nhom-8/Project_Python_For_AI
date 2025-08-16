@@ -3,7 +3,7 @@
 ## 1. Tổng Quan Dự Án
 
 ### Mục Tiêu Chính
-Triển khai một hệ thống phân tích và phân loại chủ đề (Topic Modeling) tự động cho các đánh giá sản phẩm Amazon. Dự án nhằm giải quyết vấn đề khó khăn trong việc trích xuất thông tin từ khối lượng lớn đánh giá khách hàng để cải thiện tìm kiếm sản phẩm và đưa ra khuyến nghị tốt hơn.
+Triển khai một hệ thống phân tích cảm xúc và phân loại chủ đề (Topic Modeling) tự động cho các đánh giá sản phẩm Amazon. Dự án nhằm giải quyết vấn đề khó khăn trong việc trích xuất thông tin từ khối lượng lớn đánh giá khách hàng để cải thiện tìm kiếm sản phẩm và đưa ra khuyến nghị tốt hơn.
 
 ### Đối Tượng Dữ Liệu
 - **Nguồn dữ liệu**: Tập dữ liệu đánh giá sản phẩm Amazon (train.csv)
