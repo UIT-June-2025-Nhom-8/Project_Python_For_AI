@@ -1,0 +1,29 @@
+{
+  "pipeline_info": {
+    "train_samples": 5000,
+    "test_samples": 1000,
+    "sentiment_distribution": {
+      "Negative": 2692,
+      "Positive": 2308
+    }
+  },
+  "ml_results": {
+    "best_model": "RandomForest",
+    "best_accuracy": 0.829,
+    "all_models": {
+      "GradientBoosting": {
+        "train_accuracy": 0.984,
+        "test_accuracy": 0.812
+      },
+      "RandomForest": {
+        "train_accuracy": 0.9065,
+        "test_accuracy": 0.829
+      }
+    }
+  },
+  "test_predictions": [],
+  "saved_models": [
+    "models/gradient_boosting_model.pkl",
+    "models/random_forest_model.pkl"
+  ]
+}

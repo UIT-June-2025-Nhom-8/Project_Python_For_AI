@@ -99,32 +99,28 @@ class PreProcessor:
         """
         Mở rộng các từ viết tắt
         """
-        if isinstance(text, str):
-            text = text.lower()
-            for contraction, expansion in self.contractions.items():
-                text = text.replace(contraction, expansion)
+        if not isinstance(text, str):
+            return ""
+            
+        text = text.lower()
+        for contraction, expansion in self.contractions.items():
+            text = text.replace(contraction, expansion)
         return text
 
     def handle_negations(self, text):
         """
         Xử lý phủ định bằng cách kết hợp với từ tiếp theo
         """
-        if isinstance(text, str):
-            for pattern, replacement in self.negation_patterns:
-                text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+        if not isinstance(text, str):
+            return ""
+            
+        for pattern, replacement in self.negation_patterns:
+            text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
         return text
 
     def clean_data(self, df):
         """
-        Clean DataFrame by handling null values and checking data types.
-        Does not read from files - processes DataFrame passed as parameter.
-        Based on notebook Part 3 - Data cleaning
-        
-        Args:
-            df (pd.DataFrame): Input DataFrame to clean
-            
-        Returns:
-            pd.DataFrame: Cleaned DataFrame with nulls handled
+        Clean DataFrame - fail fast nếu structure không đúng
         """
         print("Checking for missing values in each column:")
         print(df.isnull().sum())
@@ -135,27 +131,26 @@ class PreProcessor:
         print("Remaining columns after removing columns with NaN:")
         print(df.isnull().sum())
         
-        # Handle text columns specifically
-        if "text" in df.columns:
-            df.loc[:, "text"] = df.loc[:, "text"].fillna("")
-        if "title" in df.columns:
-            df.loc[:, "title"] = df.loc[:, "title"].fillna("")
+        # Handle text columns - fail fast
+        df["text"] = df["text"].fillna("")
+        df["title"] = df["title"].fillna("")
             
         return df
 
-    def remove_duplicates(self, df):
+    def remove_duplicates(self, df, text_column):
         """
-        Loại bỏ duplicates với logic tối ưu
+        Loại bỏ duplicates - fail fast nếu columns không tồn tại
         """
         print(f"Records before removing duplicates: {len(df)}")
         
-        # Loại bỏ duplicates dựa trên cả text và sentiment để tránh mất thông tin
-        if "combined_text" in df.columns and "sentiment" in df.columns:
-            df_cleaned = df.drop_duplicates(subset=["combined_text", "sentiment"])
+        # Fail fast - không cần if-else
+        if "sentiment" in df.columns:
+            df_cleaned = df.drop_duplicates(subset=[text_column, "sentiment"])
         else:
-            df_cleaned = df.drop_duplicates()
+            df_cleaned = df.drop_duplicates(subset=[text_column])
         
         print(f"Records after removing duplicates: {len(df_cleaned)}")
+        print(f"Removed {len(df) - len(df_cleaned)} duplicate records")
         return df_cleaned
 
     def advanced_text_cleaning(self, text):
@@ -204,90 +199,58 @@ class PreProcessor:
 
     def smart_tokenize(self, text):
         """
-        Tokenization thông minh với xử lý các trường hợp đặc biệt
+        Tokenization thông minh - fail fast nếu input sai
         """
-        if not isinstance(text, str):
-            return []
-            
         # Tokenize
         tokens = word_tokenize(text)
         
-        # Loại bỏ tokens chỉ chứa punctuation
-        tokens = [token for token in tokens if not all(c in string.punctuation for c in token)]
-        
-        # Loại bỏ tokens quá ngắn (có thể là noise)
-        tokens = [token for token in tokens if len(token) > 1]
-        
-        # Loại bỏ tokens chỉ chứa số
-        tokens = [token for token in tokens if not token.isdigit()]
+        # Filter tokens
+        tokens = [token for token in tokens 
+                 if not all(c in string.punctuation for c in token)
+                 and len(token) > 1 
+                 and not token.isdigit()]
         
         return tokens
 
     def enhanced_remove_stopwords(self, tokens):
         """
-        Loại bỏ stopwords với logic cải tiến
+        Loại bỏ stopwords - expect list input
         """
-        if not isinstance(tokens, list):
-            return []
-            
-        # Giữ lại một số stopwords có thể quan trọng cho sentiment
-        filtered_tokens = []
-        for token in tokens:
-            if token not in self.stop_words:
-                filtered_tokens.append(token)
-                
-        return filtered_tokens
+        return [token for token in tokens if token not in self.stop_words]
 
     def advanced_lemmatization(self, tokens):
         """
-        Lemmatization với POS tagging để có kết quả chính xác hơn
+        Lemmatization với POS tagging - expect list input
         """
-        if not isinstance(tokens, list):
-            return []
-            
-        # POS tagging để lemmatize chính xác hơn
         pos_tags = nltk.pos_tag(tokens)
         
         lemmatized_tokens = []
         for word, pos in pos_tags:
-            # Chuyển đổi POS tag sang định dạng WordNet
-            if pos.startswith('V'):
-                wordnet_pos = 'v'  # verb
-            elif pos.startswith('N'):
-                wordnet_pos = 'n'  # noun
-            elif pos.startswith('R'):
-                wordnet_pos = 'r'  # adverb
-            elif pos.startswith('J'):
-                wordnet_pos = 'a'  # adjective
-            else:
-                wordnet_pos = 'n'  # default noun
+            # Convert POS tag to WordNet format
+            wordnet_pos = ('v' if pos.startswith('V') else
+                          'n' if pos.startswith('N') else
+                          'r' if pos.startswith('R') else
+                          'a' if pos.startswith('J') else 'n')
                 
             lemmatized_word = self.lemmatizer.lemmatize(word, pos=wordnet_pos)
             lemmatized_tokens.append(lemmatized_word)
             
         return lemmatized_tokens
 
-    def extract_advanced_features(self, df, text_column='combined_text'):
+    def extract_advanced_features(self, df, text_column='cleaned_text'):
         """
-        Trích xuất các features nâng cao cho sentiment analysis
+        Trích xuất features nâng cao - expect text_column tồn tại
         """
         print("Extracting advanced features...")
         
-        if text_column not in df.columns:
-            return df
-            
-        # 1. Độ dài text
+        # Fail fast - expect column to exist
         df['text_length'] = df[text_column].str.len()
         df['word_count'] = df[text_column].str.split().str.len()
-        
-        # 2. Số lượng từ viết hoa (có thể biểu hiện cảm xúc mạnh)
         df['uppercase_count'] = df[text_column].str.count(r'[A-Z]')
-        
-        # 3. Số lượng dấu chấm than và dấu hỏi
         df['exclamation_count'] = df[text_column].str.count(r'!')
         df['question_count'] = df[text_column].str.count(r'\?')
         
-        # 4. Tỷ lệ từ tích cực/tiêu cực
+        # Positive/negative word features
         positive_words = ['good', 'great', 'excellent', 'amazing', 'wonderful', 'fantastic', 
                          'perfect', 'love', 'best', 'awesome', 'brilliant', 'outstanding']
         negative_words = ['bad', 'terrible', 'awful', 'horrible', 'worst', 'hate', 
@@ -299,15 +262,15 @@ class PreProcessor:
         for word in negative_words:
             df[f'has_{word}'] = df[text_column].str.contains(word, case=False).astype(int)
         
-        # 5. Số lượng từ phủ định
+        # Negation count
         negation_words = ['not', 'no', 'never', 'nothing', 'nobody', 'nowhere', 
                          'neither', 'hardly', 'scarcely', 'barely']
         df['negation_count'] = df[text_column].apply(
             lambda x: sum(1 for word in negation_words if word in x.lower().split())
         )
         
-        print(f"Extracted {df.shape[1] - len([col for col in df.columns if col.startswith('has_') or col.endswith('_count') or col.endswith('_length')])} base features")
-        print(f"Added {len([col for col in df.columns if col.startswith('has_') or col.endswith('_count') or col.endswith('_length')])} advanced features")
+        feature_count = len([col for col in df.columns if col.startswith('has_') or col.endswith('_count') or col.endswith('_length')])
+        print(f"Added {feature_count} advanced features")
         
         return df
 
@@ -364,19 +327,52 @@ class PreProcessor:
         else:
             return 'Neutral'
 
-    def enhanced_preprocessing_pipeline(self, df, text_column='text', use_advanced_features=True):
+    def create_combined_text(self, df):
         """
-        Pipeline preprocessing hoàn chỉnh với các cải tiến
+        Tạo combined_text từ title và text columns - fail fast
+        """
+        print("Creating combined text from title and text columns...")
+        
+        # Fill NaN values - expect these columns to exist
+        df['title'] = df['title'].fillna("")
+        df['text'] = df['text'].fillna("")
+        
+        # Combine title and text
+        df['combined_text'] = df['title'].astype(str) + " . " + df['text'].astype(str)
+        
+        # Clean empty cases
+        df['combined_text'] = df['combined_text'].str.replace(r'^\s*\.\s*', '', regex=True)
+        df['combined_text'] = df['combined_text'].str.replace(r'\s*\.\s*$', '', regex=True) 
+        df['combined_text'] = df['combined_text'].str.strip()
+        
+        # Replace empty strings with text or title if available
+        mask_empty = df['combined_text'].str.len() == 0
+        df.loc[mask_empty, 'combined_text'] = df.loc[mask_empty, 'text'].fillna(df.loc[mask_empty, 'title']).fillna("")
+        
+        print(f"Combined text created. Average length: {df['combined_text'].str.len().mean():.1f} characters")
+        
+        return df
+
+    def enhanced_preprocessing_pipeline(self, df, use_advanced_features=True):
+        """
+        Pipeline preprocessing đơn giản và trực tiếp - fail fast
+        Expect columns: ['label', 'title', 'text', 'sentiment']
         """
         print("=== ENHANCED PREPROCESSING PIPELINE ===")
+        print(f"Input DataFrame shape: {df.shape}")
+        print(f"Input columns: {list(df.columns)}")
+        
+        # Step 0: Create combined text - expect title and text columns
+        print("Step 0: Creating combined text...")
+        df = self.create_combined_text(df)
         
         # Step 1: Clean data
         print("Step 1: Enhanced data cleaning...")
         df = self.clean_data(df)
         
-        # Step 2: Remove duplicates
+        # Step 2: Remove duplicates using combined_text
         print("Step 2: Smart duplicate removal...")
-        df = self.remove_duplicates(df)
+        df = self.remove_duplicates(df, 'combined_text')
         
         # Step 3: Advanced text preprocessing
         print("Step 3: Advanced text preprocessing...")
@@ -395,28 +391,40 @@ class PreProcessor:
         df['lemmatized_text'] = df['no_stopwords'].apply(self.advanced_lemmatization)
         
         # Step 7: Reconstruct processed text
-        df['processed_text'] = df['lemmatized_text'].apply(lambda x: ' '.join(x) if isinstance(x, list) else '')
+        df['processed_text'] = df['lemmatized_text'].apply(lambda x: ' '.join(x))
         
         # Step 8: Enhanced sentiment analysis
-        print("Step 7: Enhanced sentiment analysis...")
+        print("Step 8: Enhanced sentiment analysis...")
         df['enhanced_sentiment_scores'] = df['cleaned_text'].apply(self.get_enhanced_sentiment)
         df['enhanced_compound'] = df['enhanced_sentiment_scores'].apply(lambda x: x['enhanced_compound'])
         df['enhanced_sentiment'] = df['enhanced_compound'].apply(self.classify_enhanced_sentiment)
         
-        # Step 9: Extract advanced features (optional)
+        # Step 9: Extract advanced features
         if use_advanced_features:
-            print("Step 8: Advanced feature extraction...")
+            print("Step 9: Advanced feature extraction...")
             df = self.extract_advanced_features(df, 'cleaned_text')
         
-        # Thống kê cuối
+        # Final statistics
         print("\n=== PREPROCESSING STATISTICS ===")
-        print(f"Final dataset size: {len(df)} samples")
-        if 'enhanced_sentiment' in df.columns:
-            print("Sentiment distribution:")
-            print(df['enhanced_sentiment'].value_counts().to_dict())
+        print(f"Final dataset shape: {df.shape}")
+        print(f"Text processing columns created: ['cleaned_text', 'processed_text', 'enhanced_sentiment']")
         
-        avg_words = df['processed_text'].str.split().str.len().mean()
-        print(f"Average words per text after preprocessing: {avg_words:.1f}")
+        print("Enhanced sentiment distribution:")
+        print(df['enhanced_sentiment'].value_counts().to_dict())
+        
+        print("Original sentiment distribution:")  
+        print(df['sentiment'].value_counts().to_dict())
+        
+        avg_words_original = df['combined_text'].str.split().str.len().mean()
+        avg_words_processed = df['processed_text'].str.split().str.len().mean()
+        print(f"Average words per text - Original: {avg_words_original:.1f}, Processed: {avg_words_processed:.1f}")
+        
+        # Data quality checks
+        print("\n=== DATA QUALITY CHECKS ===")
+        empty_processed = (df['processed_text'].str.len() == 0).sum()
+        empty_cleaned = (df['cleaned_text'].str.len() == 0).sum()
+        print(f"Empty processed texts: {empty_processed}/{len(df)} ({empty_processed/len(df)*100:.1f}%)")
+        print(f"Empty cleaned texts: {empty_cleaned}/{len(df)} ({empty_cleaned/len(df)*100:.1f}%)")
         
         print("✅ Enhanced preprocessing completed successfully!")
         
