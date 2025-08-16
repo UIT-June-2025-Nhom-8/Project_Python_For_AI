@@ -1,11 +1,4 @@
-"""
-Main script với các thuật toán đã được tối ưu hóa
-Sử dụng: Enhanced Preprocessing + Optimized Algorithms
-Dựa trên kết quả phân tích so sánh cho thấy cải thiện 12% accuracy
-"""
-
 import pandas as pd
-import numpy as np
 import os
 import sys
 
