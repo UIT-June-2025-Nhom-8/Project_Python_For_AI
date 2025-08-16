@@ -45,3 +45,4 @@ env/
 
 # kaggle
 kaggle.json
+__pycache__/
