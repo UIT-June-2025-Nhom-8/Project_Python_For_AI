@@ -17,7 +17,17 @@ class GradientBoostingAnalyzer:
     def __init__(self):
         """Khởi tạo các thành phần của GradientBoostingAnalyzer"""
         self.model = None
-        self.tfidf_vectorizer = TfidfVectorizer(max_features=10000, stop_words='english')
+        # TF-IDF Vectorizer với cấu hình tối ưu
+        self.tfidf_vectorizer = TfidfVectorizer(
+            max_features=30000,  # Tăng từ 10k lên 30k
+            stop_words='english',
+            ngram_range=(1, 2),  # Sử dụng unigrams và bigrams
+            min_df=2,           # Loại bỏ từ xuất hiện ít hơn 2 lần
+            max_df=0.95,        # Loại bỏ từ xuất hiện quá nhiều
+            sublinear_tf=True,  # Áp dụng scaling logarithmic
+            analyzer='word',
+            lowercase=True
+        )
         self.label_encoder = LabelEncoder()
         self.X_train = None
         self.X_test = None
@@ -38,7 +48,35 @@ class GradientBoostingAnalyzer:
         print("Chuẩn bị dữ liệu cho GradientBoosting...")
         
         # Vectorize text data
+        print("Creating enhanced TF-IDF features...")
         X = self.tfidf_vectorizer.fit_transform(df[text_column].fillna(''))
+        
+        # Thêm numerical features nếu có
+        numerical_features = []
+        for col in df.columns:
+            if (col.endswith('_count') or col.endswith('_length') or 
+                col.startswith('has_') or col in ['exclamation_count', 'question_count', 
+                                                'uppercase_count', 'negation_count']):
+                if col in df.columns and df[col].dtype in ['int64', 'float64']:
+                    numerical_features.append(col)
+        
+        if numerical_features:
+            print(f"Adding {len(numerical_features)} numerical features")
+            from scipy.sparse import hstack
+            from sklearn.preprocessing import StandardScaler
+            
+            # Chuẩn hóa numerical features
+            scaler = StandardScaler()
+            numerical_data = scaler.fit_transform(df[numerical_features])
+            
+            # Kết hợp text features và numerical features
+            X = hstack([X, numerical_data])
+            self.scaler = scaler
+            self.numerical_features = numerical_features
+        else:
+            X = X
+            self.scaler = None
+            self.numerical_features = []
         
         # Encode labels
         y = self.label_encoder.fit_transform(df['sentiment'])
@@ -59,9 +97,12 @@ class GradientBoostingAnalyzer:
             **kwargs: Các tham số cho GradientBoostingClassifier
         """
         default_params = {
-            'n_estimators': 100,
-            'learning_rate': 0.1,
-            'max_depth': 3,
+            'n_estimators': 200,        # Tăng từ 100
+            'learning_rate': 0.1,       # Giữ nguyên
+            'max_depth': 8,             # Tăng từ 3
+            'subsample': 0.8,           # Giảm overfitting
+            'min_samples_split': 10,    # Tăng để giảm overfitting
+            'min_samples_leaf': 5,      # Tăng để giảm overfitting
             'random_state': 42
         }
         default_params.update(kwargs)
