@@ -2,195 +2,252 @@ import pandas as pd
 import os
 import sys
 
-# from kaggle_data_loader import KaggleDataLoader
-from local_data_loader import LocalDataLoader as KaggleDataLoader
-CONFIG = {
-    "train_size": 100000,
-    "test_size": 10000,
-    "tfidf_max_features": 5000,
-    "tfidf_min_df": 2,
-    "tfidf_max_df": 0.8,
-    "ngram_range": (1, 2),
-}
+def main():
+    # from kaggle_data_loader import KaggleDataLoader
+    from local_data_loader import LocalDataLoader as KaggleDataLoader
+    CONFIG = {
+        "train_size": 100000,
+        "test_size": 10000,
+        "tfidf_max_features": 5000,
+        "tfidf_min_df": 2,
+        "tfidf_max_df": 0.8,
+        "ngram_range": (1, 2),
+    }
 
-print("=== AMAZON REVIEWS DATA PROCESSING PIPELINE ===")
-print(f"Configuration: {CONFIG}")
+    print("=== AMAZON REVIEWS DATA PROCESSING PIPELINE ===")
+    print(f"Configuration: {CONFIG}")
 
-print("\n=== INITIALIZING DATA LOADER ===")
-data_loader = KaggleDataLoader(CONFIG)
-train_df, test_df = data_loader.prepare_dataframes()
+    print("\n=== INITIALIZING DATA LOADER ===")
+    data_loader = KaggleDataLoader(CONFIG)
+    train_df, test_df = data_loader.prepare_dataframes()
 
-from pre_processor import PreProcessor
+    from pre_processor import PreProcessor
 
-preprocessor = PreProcessor()
+    preprocessor = PreProcessor()
 
-print("\n=== TEXT PREPROCESSING ===")
-print("Processing training data...")
-train_df = preprocessor.clean_data(train_df.copy())
-train_df = preprocessor.remove_duplicates(train_df)
-# Use efficient pipeline method that combines cleaning, tokenization, stopword removal and normalization
-train_df = train_df.assign(
-    normalized_input=train_df["input"].apply(preprocessor.preprocess_text_pipeline)
-)
+    print("\n=== TEXT PREPROCESSING ===")
+    print("Processing training data...")
+    train_df = preprocessor.clean_data(train_df.copy())
+    train_df = preprocessor.remove_duplicates(train_df)
 
-print("Processing test data...")
-test_df = preprocessor.clean_data(test_df.copy())
-test_df = preprocessor.remove_duplicates(test_df)
-# Use efficient pipeline method that combines cleaning, tokenization, stopword removal and normalization
-test_df = test_df.assign(
-    normalized_input=test_df["input"].apply(preprocessor.preprocess_text_pipeline)
-)
+    # Create copies of the train_df for gensim LDA processing
+    train_df_gensimLDA = train_df.copy()
 
-print("\n=== POST-PREPROCESSING VALIDATION ===")
-train_empty = (
-    train_df["normalized_input"]
-    .apply(lambda x: len(x) if isinstance(x, list) else 0)
-    .eq(0)
-    .sum()
-)
-test_empty = (
-    test_df["normalized_input"]
-    .apply(lambda x: len(x) if isinstance(x, list) else 0)
-    .eq(0)
-    .sum()
-)
-
-print(f"Training data quality:")
-print(f"   - Final shape: {train_df.shape}")
-print(f"   - Empty normalized_input: {train_empty}")
-print(
-    f"   - Average tokens per document: {train_df['normalized_input'].apply(len).mean():.2f}"
-)
-
-print(f"Test data quality:")
-print(f"   - Final shape: {test_df.shape}")
-print(f"   - Empty normalized_input: {test_empty}")
-print(
-    f"   - Average tokens per document: {test_df['normalized_input'].apply(len).mean():.2f}"
-)
-
-print(f"\nFinal columns: {list(train_df.columns)}")
-print("\nSample processed data:")
-print(train_df.head(3))
-print("\n" + "=" * 50)
-print(test_df.head(3))
-
-from text_analyzer import TextAnalyzer
-
-print("\n=== TEXT ANALYSIS BEFORE TF-IDF VECTORIZATION ===")
-text_analyzer = TextAnalyzer()
-
-print("\n1. TRAINING DATA ANALYSIS")
-train_analysis = text_analyzer.analyze_text_statistics(train_df, "input")
-
-print("\n2. WORD CLOUD GENERATION")
-try:
-    text_analyzer.generate_wordcloud(
-        train_df, "input", figsize=(12, 6), save_path="src/images/wordcloud_train.png"
+    # Use efficient pipeline method that combines cleaning, tokenization, stopword removal and normalization
+    train_df = train_df.assign(
+        normalized_input=train_df["input"].apply(preprocessor.preprocess_text_pipeline)
     )
-except Exception as e:
-    print(f"   Could not generate word cloud: {e}")
 
-print("\n3. DATASET COMPARISON")
-comparison_results = text_analyzer.compare_datasets(train_df, test_df, "input")
+    print("Processing test data...")
+    test_df = preprocessor.clean_data(test_df.copy())
+    test_df = preprocessor.remove_duplicates(test_df)
+    # Use efficient pipeline method that combines cleaning, tokenization, stopword removal and normalization
+    test_df = test_df.assign(
+        normalized_input=test_df["input"].apply(preprocessor.preprocess_text_pipeline)
+    )
 
-print("\n4. WORD FREQUENCY ANALYSIS")
-word_freq_report = text_analyzer.get_word_frequency_report(min_frequency=5)
-if not word_freq_report.empty:
-    print("\nTop 15 words with frequency >= 5:")
-    print(word_freq_report.head(15).to_string(index=False))
+    print("\n=== POST-PREPROCESSING VALIDATION ===")
+    train_empty = (
+        train_df["normalized_input"]
+        .apply(lambda x: len(x) if isinstance(x, list) else 0)
+        .eq(0)
+        .sum()
+    )
+    test_empty = (
+        test_df["normalized_input"]
+        .apply(lambda x: len(x) if isinstance(x, list) else 0)
+        .eq(0)
+        .sum()
+    )
 
-from tf_idf_vectorizer import TFIDFVectorizer
-
-print("\n=== TF-IDF VECTORIZATION ===")
-tfidf_vectorizer = TFIDFVectorizer(
-    max_features=CONFIG["tfidf_max_features"],
-    min_df=CONFIG["tfidf_min_df"],
-    max_df=CONFIG["tfidf_max_df"],
-    ngram_range=CONFIG["ngram_range"],
-)
-print(f"TF-IDF Configuration: {CONFIG}")
-
-print("\nTraining TF-IDF Vectorizer...")
-X_train_tfidf = tfidf_vectorizer.fit_transform(train_df["normalized_input"])
-
-print("Transforming test data...")
-X_test_tfidf = tfidf_vectorizer.transform(test_df["normalized_input"])
-
-print(f"\n=== TF-IDF MATRIX ANALYSIS ===")
-print(f"Matrix Information:")
-print(f"   Train shape: {X_train_tfidf.shape}")
-print(f"   Test shape: {X_test_tfidf.shape}")
-print(
-    f"   Sparsity: {(1 - X_train_tfidf.nnz / (X_train_tfidf.shape[0] * X_train_tfidf.shape[1])):.4f}"
-)
-print(f"   Memory usage: ~{X_train_tfidf.data.nbytes / (1024**2):.2f} MB")
-
-print(f"\nTop 10 Most Important TF-IDF Features:")
-try:
-    top_features = tfidf_vectorizer.get_top_features(X_train_tfidf, top_n=10)
-    for i, (feature, score) in enumerate(top_features, 1):
-        print(f"   {i:2d}. {feature:20s} -> {score:.4f}")
-except Exception as e:
-    print(f"   Could not extract top features: {e}")
-
-print(f"\nSaving model...")
-try:
-    model_path = "output/models/tfidf_vectorizer.pkl"
-    tfidf_vectorizer.save_vectorizer(model_path)
-    print(f"   Model saved to: {model_path}")
-except Exception as e:
-    print(f"   Error saving model: {e}")
-
-print(f"\n" + "=" * 60)
-print(f"PIPELINE COMPLETION SUMMARY")
-print(f"=" * 60)
-print(f"Dataset Information:")
-print(f"   - Train samples: {len(train_df):,}")
-print(f"   - Test samples: {len(test_df):,}")
-print(f"   - Features: {X_train_tfidf.shape[1]:,}")
-
-print(f"\nText Analysis Summary:")
-if text_analyzer.analysis_results:
-    corpus_stats = text_analyzer.analysis_results["corpus_statistics"]
-    word_stats = text_analyzer.analysis_results["word_analysis"]
-    print(f"   - Vocabulary size: {corpus_stats['vocabulary_size']:,}")
-    print(f"   - Total words: {corpus_stats['total_word_occurrences']:,}")
-    print(f"   - Average word length: {word_stats['average_word_length']} characters")
+    print(f"Training data quality:")
+    print(f"   - Final shape: {train_df.shape}")
+    print(f"   - Empty normalized_input: {train_empty}")
     print(
-        f"   - Most frequent word: '{word_stats['most_frequent_word'][0]}' ({word_stats['most_frequent_word'][1]:,} times)"
+        f"   - Average tokens per document: {train_df['normalized_input'].apply(len).mean():.2f}"
     )
 
-print(f"\nLabel Distribution:")
-train_labels = train_df["label"].value_counts()
-test_labels = test_df["label"].value_counts()
-print(f"   Train: {dict(train_labels)}")
-print(f"   Test:  {dict(test_labels)}")
+    print(f"Test data quality:")
+    print(f"   - Final shape: {test_df.shape}")
+    print(f"   - Empty normalized_input: {test_empty}")
+    print(
+        f"   - Average tokens per document: {test_df['normalized_input'].apply(len).mean():.2f}"
+    )
 
-print(f"\nData Ready for training model:")
-print(f"   - X_train_tfidf: {X_train_tfidf.shape}")
-print(f"   - X_test_tfidf: {X_test_tfidf.shape}")
-print(f"   - y_train: {train_df['label'].shape}")
-print(f"   - y_test: {test_df['label'].shape}")
-print(f"=" * 60)
+    print(f"\nFinal columns: {list(train_df.columns)}")
+    print("\nSample processed data:")
+    print(train_df.head(3))
+    print("\n" + "=" * 50)
+    print(test_df.head(3))
 
-# Import và khởi tạo ModelTrainer
-from model_trainer import ModelTrainer
+    from text_analyzer import TextAnalyzer
 
-print(f"\n=== STARTING MODEL TRAINING PIPELINE ===")
-model_trainer = ModelTrainer(output_dir="reports")
+    print("\n=== TEXT ANALYSIS BEFORE TF-IDF VECTORIZATION ===")
+    text_analyzer = TextAnalyzer()
 
-# Chạy training pipeline với tất cả models
-print("Running training pipeline for all models...")
-training_results = model_trainer.run_training_pipeline(
-    train_df=train_df, 
-    test_df=test_df, 
-    optimize_hyperparameters=False,  # Set True nếu muốn tối ưu hyperparameters (tốn thời gian)
-    save_results=True
-)
+    print("\n1. TRAINING DATA ANALYSIS")
+    train_analysis = text_analyzer.analyze_text_statistics(train_df, "input")
 
-print(f"\n" + "="*100)
-print("PIPELINE COMPLETED SUCCESSFULLY!")
-print(f"="*100)
-print("Check the 'reports/' directory for detailed JSON results.")
-print(f"="*100)
+    print("\n2. WORD CLOUD GENERATION")
+    try:
+        text_analyzer.generate_wordcloud(
+            train_df, "input", figsize=(12, 6), save_path="src/images/wordcloud_train.png"
+        )
+    except Exception as e:
+        print(f"   Could not generate word cloud: {e}")
+
+    print("\n3. DATASET COMPARISON")
+    comparison_results = text_analyzer.compare_datasets(train_df, test_df, "input")
+
+    print("\n4. WORD FREQUENCY ANALYSIS")
+    word_freq_report = text_analyzer.get_word_frequency_report(min_frequency=5)
+    if not word_freq_report.empty:
+        print("\nTop 15 words with frequency >= 5:")
+        print(word_freq_report.head(15).to_string(index=False))
+
+    from tf_idf_vectorizer import TFIDFVectorizer
+
+    print("\n=== TF-IDF VECTORIZATION ===")
+    tfidf_vectorizer = TFIDFVectorizer(
+        max_features=CONFIG["tfidf_max_features"],
+        min_df=CONFIG["tfidf_min_df"],
+        max_df=CONFIG["tfidf_max_df"],
+        ngram_range=CONFIG["ngram_range"],
+    )
+    print(f"TF-IDF Configuration: {CONFIG}")
+
+    print("\nTraining TF-IDF Vectorizer...")
+    X_train_tfidf = tfidf_vectorizer.fit_transform(train_df["normalized_input"])
+
+    print("Transforming test data...")
+    X_test_tfidf = tfidf_vectorizer.transform(test_df["normalized_input"])
+
+    print(f"\n=== TF-IDF MATRIX ANALYSIS ===")
+    print(f"Matrix Information:")
+    print(f"   Train shape: {X_train_tfidf.shape}")
+    print(f"   Test shape: {X_test_tfidf.shape}")
+    print(
+        f"   Sparsity: {(1 - X_train_tfidf.nnz / (X_train_tfidf.shape[0] * X_train_tfidf.shape[1])):.4f}"
+    )
+    print(f"   Memory usage: ~{X_train_tfidf.data.nbytes / (1024**2):.2f} MB")
+
+    print(f"\nTop 10 Most Important TF-IDF Features:")
+    try:
+        top_features = tfidf_vectorizer.get_top_features(X_train_tfidf, top_n=10)
+        for i, (feature, score) in enumerate(top_features, 1):
+            print(f"   {i:2d}. {feature:20s} -> {score:.4f}")
+    except Exception as e:
+        print(f"   Could not extract top features: {e}")
+
+    print(f"\nSaving model...")
+    try:
+        model_path = "output/models/tfidf_vectorizer.pkl"
+        tfidf_vectorizer.save_vectorizer(model_path)
+        print(f"   Model saved to: {model_path}")
+    except Exception as e:
+        print(f"   Error saving model: {e}")
+
+    print(f"\n" + "=" * 60)
+    print(f"PIPELINE COMPLETION SUMMARY")
+    print(f"=" * 60)
+    print(f"Dataset Information:")
+    print(f"   - Train samples: {len(train_df):,}")
+    print(f"   - Test samples: {len(test_df):,}")
+    print(f"   - Features: {X_train_tfidf.shape[1]:,}")
+
+    print(f"\nText Analysis Summary:")
+    if text_analyzer.analysis_results:
+        corpus_stats = text_analyzer.analysis_results["corpus_statistics"]
+        word_stats = text_analyzer.analysis_results["word_analysis"]
+        print(f"   - Vocabulary size: {corpus_stats['vocabulary_size']:,}")
+        print(f"   - Total words: {corpus_stats['total_word_occurrences']:,}")
+        print(f"   - Average word length: {word_stats['average_word_length']} characters")
+        print(
+            f"   - Most frequent word: '{word_stats['most_frequent_word'][0]}' ({word_stats['most_frequent_word'][1]:,} times)"
+        )
+
+    print(f"\nLabel Distribution:")
+    train_labels = train_df["label"].value_counts()
+    test_labels = test_df["label"].value_counts()
+    print(f"   Train: {dict(train_labels)}")
+    print(f"   Test:  {dict(test_labels)}")
+
+    print(f"\nData Ready for training model:")
+    print(f"   - X_train_tfidf: {X_train_tfidf.shape}")
+    print(f"   - X_test_tfidf: {X_test_tfidf.shape}")
+    print(f"   - y_train: {train_df['label'].shape}")
+    print(f"   - y_test: {test_df['label'].shape}")
+    print(f"=" * 60)
+
+    # Import và khởi tạo ModelTrainer
+    from model_trainer import ModelTrainer
+
+    print(f"\n=== STARTING MODEL TRAINING PIPELINE ===")
+    model_trainer = ModelTrainer(output_dir="reports")
+
+    # Chạy training pipeline với tất cả models
+    print("Running training pipeline for all models...")
+    training_results = model_trainer.run_training_pipeline(
+        train_df=train_df, 
+        test_df=test_df, 
+        optimize_hyperparameters=False,  # Set True nếu muốn tối ưu hyperparameters (tốn thời gian)
+        save_results=True
+    )
+
+    print(f"\n" + "="*100)
+    print("PIPELINE COMPLETED SUCCESSFULLY!")
+    print(f"="*100)
+    print("Check the 'reports/' directory for detailed JSON results.")
+    print(f"="*100)
+
+    print(f"\n=== TOPIC MODEL TRAINING GENSIM LDA PIPELINE ===")
+    from gensim_lda import GensimLDA,run_lda_analysis
+    gensimLDA = GensimLDA()
+
+    print("\n=== TEXT PREPROCESSING ===")
+    # Process training data using efficient pipeline method
+    print("Processing training data...")
+    # Use efficient pipeline method that combines cleaning, tokenization, stopword removal and lemmatization
+    train_df_gensimLDA = train_df_gensimLDA.assign(
+        lda_input=train_df["input"].apply(gensimLDA.preprocess_for_lda)
+    )
+
+    # Data quality check after preprocessing
+    print("\n=== POST-PREPROCESSING VALIDATION ===")
+    train_df_gensimLDA_empty = (
+        train_df_gensimLDA["lda_input"]
+        .apply(lambda x: len(x) if isinstance(x, list) else 0)
+        .eq(0)
+        .sum()
+    )
+
+    print(f"Training data quality:")
+    print(f"   - Final shape: {train_df_gensimLDA.shape}")
+    print(f"   - Empty lda_input: {train_df_gensimLDA_empty}")
+    print(
+        f"   - Average tokens per document: {train_df_gensimLDA['lda_input'].apply(len).mean():.2f}"
+    )
+
+
+    # Run LDA Topic Modeling
+    print("\n" + "="*60)
+    print("=== GENSIM LDA TOPIC MODELING ===")
+    print("="*60)
+
+    # Analyze với 50k samples
+    lda, lda_metrics = run_lda_analysis(train_df=train_df_gensimLDA,sample_size=CONFIG["train_size"], find_optimal=False, fixed_topics=11)
+
+    # In kết quả vào final summary
+
+    print(f"\nLDA Topic Modeling Results:")
+    print("="*60)
+    print(f"Training:")
+    print(f"   - Number of topics: {lda_metrics['num_topics']}")
+    print(f"   - Coherence Score: {lda_metrics['coherence_score']:.4f}")
+    print(f"   - Perplexity: {lda_metrics['perplexity']:.4f}")
+    print(f"   - Dictionary size: {lda_metrics['dictionary_size']}")
+    print(f"   - Corpus size: {lda_metrics['corpus_size']}")
+    print(f"="*60)
+
+if __name__ == "__main__":
+    main()
