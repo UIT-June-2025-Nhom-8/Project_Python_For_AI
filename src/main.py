@@ -5,7 +5,7 @@ import sys
 # from kaggle_data_loader import KaggleDataLoader
 from local_data_loader import LocalDataLoader as KaggleDataLoader
 CONFIG = {
-    "train_size": 100_000,
+    "train_size": 500_000,
     "test_size": 10000,
     "tfidf_max_features": 5000,
     "tfidf_min_df": 2,
@@ -23,31 +23,6 @@ print(f"Configuration: {CONFIG}")
 print("\n=== INITIALIZING DATA LOADER ===")
 data_loader = KaggleDataLoader(CONFIG)
 train_df, test_df = data_loader.prepare_dataframes()
-
-# ===== BALANCE NEGATIVE AND POSITIVE IN TRAIN SET =====
-print("\n=== BALANCING TRAIN DATA (NEGATIVE vs POSITIVE) ===")
-target_train_size = CONFIG["train_size"]
-if "label" in train_df.columns:
-    neg_df = train_df[train_df["label"] == 1]
-    pos_df = train_df[train_df["label"] == 2]
-    n_each = target_train_size // 2
-    # Nếu thiếu thì lấy tối đa có thể
-    neg_sample = neg_df.sample(n=min(n_each, len(neg_df)), random_state=42)
-    pos_sample = pos_df.sample(n=min(n_each, len(pos_df)), random_state=42)
-    # Nếu thiếu số lượng, bổ sung từ class còn lại
-    total = len(neg_sample) + len(pos_sample)
-    if total < target_train_size:
-        # Ưu tiên bổ sung từ class còn lại nếu còn dư
-        if len(neg_df) > len(neg_sample):
-            extra = min(target_train_size - total, len(neg_df) - len(neg_sample))
-            neg_sample = pd.concat([neg_sample, neg_df.drop(neg_sample.index).sample(n=extra, random_state=43)])
-        elif len(pos_df) > len(pos_sample):
-            extra = min(target_train_size - total, len(pos_df) - len(pos_sample))
-            pos_sample = pd.concat([pos_sample, pos_df.drop(pos_sample.index).sample(n=extra, random_state=44)])
-    train_df = pd.concat([neg_sample, pos_sample]).sample(frac=1, random_state=99).reset_index(drop=True)
-    print(f"Train set balanced: negative={sum(train_df['label']==1)}, positive={sum(train_df['label']==2)}, total={len(train_df)}")
-else:
-    print("Warning: 'label' column not found in train_df, skipping balancing step.")
 
 from pre_processor import PreProcessor
 
@@ -69,15 +44,6 @@ test_df = preprocessor.remove_duplicates(test_df)
 test_df = test_df.assign(
     normalized_input=test_df["input"].apply(preprocessor.preprocess_text_pipeline)
 )
-
-print("\n=== MEMORY OPTIMIZATION ===")
-print("Dropping original 'input' column to save memory...")
-print(f"Before: Train memory usage ~{train_df.memory_usage(deep=True).sum() / (1024**2):.2f} MB")
-# Drop original input column to save memory since we have normalized_input
-train_df = train_df.drop('input', axis=1)
-
-print(f"After: Train memory usage ~{train_df.memory_usage(deep=True).sum() / (1024**2):.2f} MB")
-
 print("\n=== POST-PREPROCESSING VALIDATION ===")
 train_empty = (
     train_df["normalized_input"]
@@ -229,11 +195,13 @@ from model_trainer import ModelTrainer
 print(f"\n=== STARTING MODEL TRAINING PIPELINE ===")
 model_trainer = ModelTrainer(output_dir=OUTPUT_REPORT)
 
-# Chạy training pipeline với tất cả models
-print("Running training pipeline for all models...")
-training_results = model_trainer.run_training_pipeline(
-    train_df=train_df, 
-    test_df=test_df, 
+# Chạy training pipeline với tất cả models using pre-computed TF-IDF matrices
+print("Running training pipeline for all models using pre-computed TF-IDF matrices...")
+training_results = model_trainer.run_training_pipeline_with_tfidf(
+    X_train_tfidf=X_train_tfidf,
+    X_test_tfidf=X_test_tfidf,
+    y_train=train_df['label'],
+    y_test=test_df['label'],
     optimize_hyperparameters=False,  # Set True nếu muốn tối ưu hyperparameters (tốn thời gian)
     save_results=True
 )

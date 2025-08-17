@@ -1,0 +1,146 @@
+{
+  "pipeline_summary": {
+    "timestamp": "2025-08-17T22:04:22.025906",
+    "total_pipeline_time_seconds": 2032.42,
+    "models_trained": 3,
+    "comparison": {
+      "best_accuracy_model": "Logistic_Regression",
+      "best_accuracy_score": 0.8805,
+      "fastest_model": "Logistic_Regression",
+      "fastest_time": 2.07,
+      "all_accuracies": {
+        "Logistic_Regression": 0.8805,
+        "Random_Forest": 0.8559,
+        "Gradient_Boosting": 0.8211
+      },
+      "all_training_times": {
+        "Logistic_Regression": 2.07,
+        "Random_Forest": 1274.4,
+        "Gradient_Boosting": 755.69
+      }
+    }
+  },
+  "individual_results": {
+    "Logistic_Regression": {
+      "model_name": "LogisticRegression",
+      "train_accuracy": 0.8902,
+      "test_accuracy": 0.8805,
+      "f1_score": 0.8805,
+      "training_time_seconds": 2.07,
+      "hyperparameter_optimization": false,
+      "best_params": null,
+      "classification_report": {
+        "0": {
+          "precision": 0.8843182292754228,
+          "recall": 0.8685397867104184,
+          "f1-score": 0.8763579927573719,
+          "support": 4876.0
+        },
+        "1": {
+          "precision": 0.8769909806179236,
+          "recall": 0.8918813427010148,
+          "f1-score": 0.8843734881470731,
+          "support": 5124.0
+        },
+        "accuracy": 0.8805,
+        "macro avg": {
+          "precision": 0.8806546049466732,
+          "recall": 0.8802105647057166,
+          "f1-score": 0.8803657404522225,
+          "support": 10000.0
+        },
+        "weighted avg": {
+          "precision": 0.8805637470633203,
+          "recall": 0.8805,
+          "f1-score": 0.8804651325950548,
+          "support": 10000.0
+        }
+      }
+    },
+    "Random_Forest": {
+      "model_name": "RandomForestClassifier",
+      "train_accuracy": 1.0,
+      "test_accuracy": 0.8559,
+      "f1_score": 0.8559,
+      "training_time_seconds": 1274.4,
+      "hyperparameter_optimization": false,
+      "best_params": null,
+      "classification_report": {
+        "0": {
+          "precision": 0.8505817513778322,
+          "recall": 0.8545939294503692,
+          "f1-score": 0.8525831202046036,
+          "support": 4876.0
+        },
+        "1": {
+          "precision": 0.8610076455596942,
+          "recall": 0.8571428571428571,
+          "f1-score": 0.8590709046454768,
+          "support": 5124.0
+        },
+        "accuracy": 0.8559,
+        "macro avg": {
+          "precision": 0.8557946984687632,
+          "recall": 0.8558683932966131,
+          "f1-score": 0.8558270124250402,
+          "support": 10000.0
+        },
+        "weighted avg": {
+          "precision": 0.8559239795566184,
+          "recall": 0.8559,
+          "f1-score": 0.855907460952107,
+          "support": 10000.0
+        }
+      }
+    },
+    "Gradient_Boosting": {
+      "model_name": "GradientBoostingClassifier",
+      "train_accuracy": 0.8264,
+      "test_accuracy": 0.8211,
+      "f1_score": 0.8211,
+      "training_time_seconds": 755.69,
+      "hyperparameter_optimization": false,
+      "classification_report": {
+        "0": {
+          "precision": 0.8127659574468085,
+          "recall": 0.8226004922067268,
+          "f1-score": 0.8176536540617674,
+          "support": 4876.0
+        },
+        "1": {
+          "precision": 0.8292201382033564,
+          "recall": 0.819672131147541,
+          "f1-score": 0.8244184905290018,
+          "support": 5124.0
+        },
+        "accuracy": 0.8211,
+        "macro avg": {
+          "precision": 0.8209930478250824,
+          "recall": 0.821136311677134,
+          "f1-score": 0.8210360722953847,
+          "support": 10000.0
+        },
+        "weighted avg": {
+          "precision": 0.8211970796664636,
+          "recall": 0.8211,
+          "f1-score": 0.8211199562675784,
+          "support": 10000.0
+        }
+      }
+    }
+  },
+  "training_config": {
+    "optimize_hyperparameters": false,
+    "used_precomputed_tfidf": true,
+    "tfidf_train_shape": [
+      500000,
+      5000
+    ],
+    "tfidf_test_shape": [
+      10000,
+      5000
+    ],
+    "train_samples": 500000,
+    "test_samples": 10000
+  }
+}

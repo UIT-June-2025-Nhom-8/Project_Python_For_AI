@@ -5,109 +5,85 @@ import time
 import os
 from datetime import datetime
 
-# Import các classifier
-from logistic_regression_classifier import LogisticRegressionAnalyzer
-from random_forest_classifier import RandomForestAnalyzer
-from gradient_boosting_classifier import GradientBoostingAnalyzer
-
 
 class ModelTrainer:
     """
-    Class để train nhiều models và so sánh kết quả
+    Simplified class to train multiple models and compare results
     """
     
     def __init__(self, output_dir="reports"):
         """
-        Khởi tạo ModelTrainer
+        Initialize ModelTrainer
         
         Args:
-            output_dir (str): Thư mục lưu kết quả
+            output_dir (str): Directory to save results
         """
         self.output_dir = output_dir
-        self.results = {}
-        self.training_history = []
         
-        # Tạo thư mục output nếu chưa có
+        # Create output directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
         
-    def prepare_data_for_models(self, train_df, test_df):
+    def train_logistic_regression_with_tfidf(self, X_train_tfidf, X_test_tfidf, y_train, y_test, optimize_hyperparameters=True):
         """
-        Chuẩn bị dữ liệu chung cho tất cả models
-        
-        Args:
-            train_df (pd.DataFrame): Training data
-            test_df (pd.DataFrame): Test data
-            
-        Returns:
-            tuple: Combined dataframe và thông tin
+        Train Logistic Regression with pre-computed TF-IDF matrix
         """
-        print("\n=== PREPARING DATA FOR MODEL TRAINING ===")
+        from sklearn.linear_model import LogisticRegression
+        from sklearn.model_selection import GridSearchCV
+        from sklearn.metrics import accuracy_score, classification_report, f1_score
         
-        # Thêm cột sentiment cho train data (chuyển đổi label)
-        train_df = train_df.copy()
-        test_df = test_df.copy()
-        
-        # Map labels: 1 -> negative (0), 2 -> positive (1) 
-        label_mapping = {1: 0, 2: 1}  # 1=negative, 2=positive
-        train_df['sentiment'] = train_df['label'].map(label_mapping)
-        test_df['sentiment'] = test_df['label'].map(label_mapping)
-        
-        # Combine train and test để split lại theo cách chuẩn
-        train_df['dataset_type'] = 'train'
-        test_df['dataset_type'] = 'test'
-        combined_df = pd.concat([train_df, test_df], ignore_index=True)
-        
-        # Sử dụng cột input đã được tiền xử lý
-        text_column = 'input'  # Sử dụng input thay vì normalized_input
-        
-        print(f"Combined dataset shape: {combined_df.shape}")
-        print(f"Text column: {text_column}")
-        print(f"Sentiment distribution: {combined_df['sentiment'].value_counts().to_dict()}")
-        
-        return combined_df, text_column
-        
-    def train_logistic_regression(self, df, text_column, optimize_hyperparameters=True):
-        """
-        Train Logistic Regression model
-        
-        Args:
-            df (pd.DataFrame): Dataset
-            text_column (str): Text column name
-            optimize_hyperparameters (bool): Có optimize hyperparameters không
-            
-        Returns:
-            dict: Kết quả training
-        """
         print("\n" + "="*60)
-        print("TRAINING LOGISTIC REGRESSION")
+        print("TRAINING LOGISTIC REGRESSION WITH PRE-COMPUTED TF-IDF")
         print("="*60)
         
         start_time = time.time()
         
         try:
-            # Khởi tạo analyzer
-            lr_analyzer = LogisticRegressionAnalyzer(optimize_hyperparameters=optimize_hyperparameters)
+            # Initialize model
+            if optimize_hyperparameters:
+                print("Running hyperparameter optimization...")
+                param_grid = {
+                    'C': [0.1, 1, 10],
+                    'penalty': ['l1', 'l2'],
+                    'solver': ['liblinear']
+                }
+                lr = LogisticRegression(random_state=42, max_iter=1000)
+                grid_search = GridSearchCV(lr, param_grid, cv=3, scoring='accuracy', n_jobs=-1)
+                grid_search.fit(X_train_tfidf, y_train)
+                model = grid_search.best_estimator_
+                best_params = grid_search.best_params_
+                print(f"Best parameters: {best_params}")
+            else:
+                model = LogisticRegression(random_state=42, max_iter=1000)
+                model.fit(X_train_tfidf, y_train)
+                best_params = None
             
-            # Chuẩn bị dữ liệu
-            lr_analyzer.prepare_data(df, text_column, test_size=0.2, random_state=42)
+            # Predictions
+            y_train_pred = model.predict(X_train_tfidf)
+            y_test_pred = model.predict(X_test_tfidf)
             
-            # Khởi tạo model (sẽ optimize nếu cần)
-            lr_analyzer.initialize_model()
-            
-            # Train model
-            results = lr_analyzer.train_model()
+            # Metrics
+            train_acc = accuracy_score(y_train, y_train_pred)
+            test_acc = accuracy_score(y_test, y_test_pred)
+            f1 = f1_score(y_test, y_test_pred, average='weighted')
             
             training_time = time.time() - start_time
             
-            # Thêm thông tin bổ sung
-            results.update({
+            print(f"Training Accuracy: {train_acc:.4f}")
+            print(f"Test Accuracy: {test_acc:.4f}")
+            print(f"F1 Score: {f1:.4f}")
+            
+            results = {
+                'model_name': 'LogisticRegression',
+                'train_accuracy': round(train_acc, 4),
+                'test_accuracy': round(test_acc, 4),
+                'f1_score': round(f1, 4),
                 'training_time_seconds': round(training_time, 2),
                 'hyperparameter_optimization': optimize_hyperparameters,
-                'best_params': getattr(lr_analyzer, 'best_params', None)
-            })
+                'best_params': best_params,
+                'classification_report': classification_report(y_test, y_test_pred, output_dict=True)
+            }
             
             print(f"Logistic Regression training completed in {training_time:.2f} seconds")
-            
             return results
             
         except Exception as e:
@@ -118,48 +94,68 @@ class ModelTrainer:
                 'training_time_seconds': time.time() - start_time
             }
     
-    def train_random_forest(self, df, text_column, optimize_hyperparameters=False):
+    def train_random_forest_with_tfidf(self, X_train_tfidf, X_test_tfidf, y_train, y_test, optimize_hyperparameters=False):
         """
-        Train Random Forest model
+        Train Random Forest with pre-computed TF-IDF matrix
+        """
+        from sklearn.ensemble import RandomForestClassifier
+        from sklearn.model_selection import GridSearchCV
+        from sklearn.metrics import accuracy_score, classification_report, f1_score
         
-        Args:
-            df (pd.DataFrame): Dataset
-            text_column (str): Text column name
-            optimize_hyperparameters (bool): Có optimize hyperparameters không
-            
-        Returns:
-            dict: Kết quả training
-        """
         print("\n" + "="*60)
-        print("TRAINING RANDOM FOREST")
+        print("TRAINING RANDOM FOREST WITH PRE-COMPUTED TF-IDF")
         print("="*60)
         
         start_time = time.time()
         
         try:
-            # Khởi tạo analyzer
-            rf_analyzer = RandomForestAnalyzer(optimize_hyperparameters=optimize_hyperparameters)
+            # Initialize model
+            if optimize_hyperparameters:
+                print("Running hyperparameter optimization...")
+                param_grid = {
+                    'n_estimators': [50, 100],
+                    'max_depth': [10, 20, None],
+                    'min_samples_split': [2, 5],
+                    'min_samples_leaf': [1, 2]
+                }
+                rf = RandomForestClassifier(random_state=42, n_jobs=-1)
+                grid_search = GridSearchCV(rf, param_grid, cv=3, scoring='accuracy', n_jobs=-1)
+                grid_search.fit(X_train_tfidf, y_train)
+                model = grid_search.best_estimator_
+                best_params = grid_search.best_params_
+                print(f"Best parameters: {best_params}")
+            else:
+                model = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
+                model.fit(X_train_tfidf, y_train)
+                best_params = None
             
-            # Chuẩn bị dữ liệu
-            rf_analyzer.prepare_data(df, text_column, test_size=0.2, random_state=42)
+            # Predictions
+            y_train_pred = model.predict(X_train_tfidf)
+            y_test_pred = model.predict(X_test_tfidf)
             
-            # Khởi tạo model (sẽ optimize nếu cần)
-            rf_analyzer.initialize_model()
-            
-            # Train model
-            results = rf_analyzer.train_model()
+            # Metrics
+            train_acc = accuracy_score(y_train, y_train_pred)
+            test_acc = accuracy_score(y_test, y_test_pred)
+            f1 = f1_score(y_test, y_test_pred, average='weighted')
             
             training_time = time.time() - start_time
             
-            # Thêm thông tin bổ sung
-            results.update({
+            print(f"Training Accuracy: {train_acc:.4f}")
+            print(f"Test Accuracy: {test_acc:.4f}")
+            print(f"F1 Score: {f1:.4f}")
+            
+            results = {
+                'model_name': 'RandomForestClassifier',
+                'train_accuracy': round(train_acc, 4),
+                'test_accuracy': round(test_acc, 4),
+                'f1_score': round(f1, 4),
                 'training_time_seconds': round(training_time, 2),
                 'hyperparameter_optimization': optimize_hyperparameters,
-                'best_params': getattr(rf_analyzer, 'best_params', None)
-            })
+                'best_params': best_params,
+                'classification_report': classification_report(y_test, y_test_pred, output_dict=True)
+            }
             
             print(f"Random Forest training completed in {training_time:.2f} seconds")
-            
             return results
             
         except Exception as e:
@@ -170,46 +166,60 @@ class ModelTrainer:
                 'training_time_seconds': time.time() - start_time
             }
     
-    def train_gradient_boosting(self, df, text_column):
+    def train_gradient_boosting_with_tfidf(self, X_train_tfidf, X_test_tfidf, y_train, y_test):
         """
-        Train Gradient Boosting model
+        Train Gradient Boosting with pre-computed TF-IDF matrix
+        """
+        from sklearn.ensemble import GradientBoostingClassifier
+        from sklearn.metrics import accuracy_score, classification_report, f1_score
         
-        Args:
-            df (pd.DataFrame): Dataset
-            text_column (str): Text column name
-            
-        Returns:
-            dict: Kết quả training
-        """
         print("\n" + "="*60)
-        print("TRAINING GRADIENT BOOSTING")
+        print("TRAINING GRADIENT BOOSTING WITH PRE-COMPUTED TF-IDF")
         print("="*60)
         
         start_time = time.time()
         
         try:
-            # Khởi tạo analyzer
-            gb_analyzer = GradientBoostingAnalyzer()
+            # Initialize model with optimal parameters
+            model = GradientBoostingClassifier(
+                n_estimators=100,
+                learning_rate=0.1,
+                max_depth=6,
+                subsample=0.8,
+                min_samples_split=10,
+                min_samples_leaf=5,
+                random_state=42
+            )
             
-            # Chuẩn bị dữ liệu
-            gb_analyzer.prepare_data(df, text_column, test_size=0.2, random_state=42)
+            print("Training Gradient Boosting Classifier...")
+            model.fit(X_train_tfidf, y_train)
             
-            # Khởi tạo model với parameters mặc định
-            gb_analyzer.initialize_model()
+            # Predictions
+            y_train_pred = model.predict(X_train_tfidf)
+            y_test_pred = model.predict(X_test_tfidf)
             
-            # Train model
-            results = gb_analyzer.train_model()
+            # Metrics
+            train_acc = accuracy_score(y_train, y_train_pred)
+            test_acc = accuracy_score(y_test, y_test_pred)
+            f1 = f1_score(y_test, y_test_pred, average='weighted')
             
             training_time = time.time() - start_time
             
-            # Thêm thông tin bổ sung
-            results.update({
+            print(f"Training Accuracy: {train_acc:.4f}")
+            print(f"Test Accuracy: {test_acc:.4f}")
+            print(f"F1 Score: {f1:.4f}")
+            
+            results = {
+                'model_name': 'GradientBoostingClassifier',
+                'train_accuracy': round(train_acc, 4),
+                'test_accuracy': round(test_acc, 4),
+                'f1_score': round(f1, 4),
                 'training_time_seconds': round(training_time, 2),
-                'hyperparameter_optimization': False
-            })
+                'hyperparameter_optimization': False,
+                'classification_report': classification_report(y_test, y_test_pred, output_dict=True)
+            }
             
             print(f"Gradient Boosting training completed in {training_time:.2f} seconds")
-            
             return results
             
         except Exception as e:
@@ -219,82 +229,14 @@ class ModelTrainer:
                 'error': str(e),
                 'training_time_seconds': time.time() - start_time
             }
-    
-    def train_all_models(self, train_df, test_df, optimize_hyperparameters=False):
-        """
-        Train tất cả models và so sánh kết quả
-        
-        Args:
-            train_df (pd.DataFrame): Training data
-            test_df (pd.DataFrame): Test data
-            optimize_hyperparameters (bool): Có optimize hyperparameters không
-            
-        Returns:
-            dict: Kết quả của tất cả models
-        """
-        print("\n" + "="*80)
-        print("TRAINING ALL MODELS PIPELINE")
-        print("="*80)
-        
-        pipeline_start_time = time.time()
-        
-        # Chuẩn bị dữ liệu
-        combined_df, text_column = self.prepare_data_for_models(train_df, test_df)
-        
-        # Dictionary lưu kết quả
-        all_results = {}
-        
-        # Train từng model
-        models_to_train = [
-            ('Logistic_Regression', lambda: self.train_logistic_regression(
-                combined_df, text_column, optimize_hyperparameters)),
-            ('Random_Forest', lambda: self.train_random_forest(
-                combined_df, text_column, optimize_hyperparameters)),
-            ('Gradient_Boosting', lambda: self.train_gradient_boosting(
-                combined_df, text_column))
-        ]
-        
-        for model_name, train_func in models_to_train:
-            print(f"\n>>> Training {model_name}...")
-            try:
-                results = train_func()
-                all_results[model_name] = results
-            except Exception as e:
-                print(f"Failed to train {model_name}: {e}")
-                all_results[model_name] = {
-                    'model_name': model_name,
-                    'error': str(e),
-                    'training_time_seconds': 0
-                }
-        
-        # Tính tổng thời gian
-        total_pipeline_time = time.time() - pipeline_start_time
-        
-        # Tạo summary
-        pipeline_summary = self.create_pipeline_summary(all_results, total_pipeline_time)
-        
-        # Lưu kết quả
-        final_results = {
-            'pipeline_summary': pipeline_summary,
-            'individual_results': all_results,
-            'training_config': {
-                'optimize_hyperparameters': optimize_hyperparameters,
-                'text_column': text_column,
-                'train_samples': len(train_df),
-                'test_samples': len(test_df),
-                'total_samples': len(combined_df)
-            }
-        }
-        
-        return final_results
-    
+
     def create_pipeline_summary(self, all_results, total_time):
         """
-        Tạo summary so sánh các models
+        Create summary comparing all models
         
         Args:
-            all_results (dict): Kết quả của tất cả models
-            total_time (float): Tổng thời gian training
+            all_results (dict): Results from all models
+            total_time (float): Total training time
             
         Returns:
             dict: Pipeline summary
@@ -306,7 +248,7 @@ class ModelTrainer:
             'comparison': {}
         }
         
-        # So sánh accuracy
+        # Compare accuracy
         accuracies = {}
         training_times = {}
         
@@ -332,14 +274,14 @@ class ModelTrainer:
     
     def save_results_to_json(self, results, filename=None):
         """
-        Lưu kết quả vào file JSON
+        Save results to JSON file
         
         Args:
-            results (dict): Kết quả training
-            filename (str): Tên file (optional)
+            results (dict): Training results
+            filename (str): File name (optional)
             
         Returns:
-            str: Đường dẫn file đã lưu
+            str: Path to saved file
         """
         if filename is None:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -347,7 +289,7 @@ class ModelTrainer:
         
         filepath = os.path.join(self.output_dir, filename)
         
-        # Chuyển đổi numpy arrays thành lists để serialize JSON
+        # Convert numpy arrays to lists for JSON serialization
         def convert_numpy(obj):
             if isinstance(obj, np.ndarray):
                 return obj.tolist()
@@ -356,7 +298,6 @@ class ModelTrainer:
             elif isinstance(obj, np.floating):
                 return float(obj)
             elif isinstance(obj, dict):
-                # Convert both keys and values, handling numpy types in keys
                 converted_dict = {}
                 for key, value in obj.items():
                     # Convert numpy types in keys to standard Python types
@@ -365,7 +306,7 @@ class ModelTrainer:
                     elif isinstance(key, np.floating):
                         converted_key = float(key)
                     elif isinstance(key, np.ndarray):
-                        converted_key = str(key.tolist())  # Convert arrays to string representation
+                        converted_key = str(key.tolist())
                     else:
                         converted_key = key
                     
@@ -376,19 +317,19 @@ class ModelTrainer:
             else:
                 return obj
         
-        # Remove 'coefficients' field from each model result if present
+        # Remove large fields if present
         results_to_save = results.copy()
         if 'individual_results' in results_to_save:
             for model_name, model_result in results_to_save['individual_results'].items():
                 if isinstance(model_result, dict):
-                    if 'coefficients' in model_result : del model_result['coefficients']
-                    if 'feature_names' in model_result : del model_result['feature_names']
-                    if 'feature_importance' in model_result : del model_result['feature_importance']
+                    for field in ['coefficients', 'feature_names', 'feature_importance']:
+                        if field in model_result:
+                            del model_result[field]
 
         # Convert results
         serializable_results = convert_numpy(results_to_save)
 
-        # Lưu file
+        # Save file
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(serializable_results, f, indent=2, ensure_ascii=False)
         
@@ -397,10 +338,10 @@ class ModelTrainer:
     
     def print_summary(self, results):
         """
-        In summary kết quả ra console
+        Print summary of results to console
         
         Args:
-            results (dict): Kết quả training
+            results (dict): Training results
         """
         print("\n" + "="*80)
         print("TRAINING PIPELINE SUMMARY")
@@ -429,31 +370,90 @@ class ModelTrainer:
         
         print("="*80)
     
-    def run_training_pipeline(self, train_df, test_df, optimize_hyperparameters=False, save_results=True):
+    def run_training_pipeline_with_tfidf(self, X_train_tfidf, X_test_tfidf, y_train, y_test, 
+                                         optimize_hyperparameters=False, save_results=True):
         """
-        Chạy toàn bộ pipeline training
+        Run complete training pipeline with pre-computed TF-IDF matrices
         
         Args:
-            train_df (pd.DataFrame): Training data
-            test_df (pd.DataFrame): Test data
-            optimize_hyperparameters (bool): Có optimize hyperparameters không
-            save_results (bool): Có lưu kết quả không
+            X_train_tfidf: TF-IDF matrix for training data
+            X_test_tfidf: TF-IDF matrix for test data  
+            y_train: Training labels
+            y_test: Test labels
+            optimize_hyperparameters (bool): Whether to optimize hyperparameters
+            save_results (bool): Whether to save results
             
         Returns:
-            dict: Kết quả training
+            dict: Training results
         """
         print("\n" + "="*100)
-        print("STARTING MODEL TRAINING PIPELINE")
+        print("STARTING MODEL TRAINING PIPELINE WITH PRE-COMPUTED TF-IDF")
         print("="*100)
         
-        # Train tất cả models
-        results = self.train_all_models(train_df, test_df, optimize_hyperparameters)
+        # Map labels: 1 -> negative (0), 2 -> positive (1) 
+        label_mapping = {1: 0, 2: 1}
+        y_train_mapped = y_train.map(label_mapping)
+        y_test_mapped = y_test.map(label_mapping)
         
-        # In summary
-        self.print_summary(results)
+        print(f"Using pre-computed TF-IDF matrices:")
+        print(f"   - X_train shape: {X_train_tfidf.shape}")
+        print(f"   - X_test shape: {X_test_tfidf.shape}")
+        print(f"   - y_train shape: {y_train_mapped.shape}")
+        print(f"   - y_test shape: {y_test_mapped.shape}")
         
-        # Lưu kết quả
+        pipeline_start_time = time.time()
+        
+        # Dictionary to store results
+        all_results = {}
+        
+        # Train each model with pre-computed TF-IDF
+        models_to_train = [
+            ('Logistic_Regression', lambda: self.train_logistic_regression_with_tfidf(
+                X_train_tfidf, X_test_tfidf, y_train_mapped, y_test_mapped, optimize_hyperparameters)),
+            ('Random_Forest', lambda: self.train_random_forest_with_tfidf(
+                X_train_tfidf, X_test_tfidf, y_train_mapped, y_test_mapped, optimize_hyperparameters)),
+            ('Gradient_Boosting', lambda: self.train_gradient_boosting_with_tfidf(
+                X_train_tfidf, X_test_tfidf, y_train_mapped, y_test_mapped))
+        ]
+        
+        for model_name, train_func in models_to_train:
+            print(f"\n>>> Training {model_name} with pre-computed TF-IDF...")
+            try:
+                results = train_func()
+                all_results[model_name] = results
+            except Exception as e:
+                print(f"Failed to train {model_name}: {e}")
+                all_results[model_name] = {
+                    'model_name': model_name,
+                    'error': str(e),
+                    'training_time_seconds': 0
+                }
+        
+        # Calculate total time
+        total_pipeline_time = time.time() - pipeline_start_time
+        
+        # Create summary
+        pipeline_summary = self.create_pipeline_summary(all_results, total_pipeline_time)
+        
+        # Save results
+        final_results = {
+            'pipeline_summary': pipeline_summary,
+            'individual_results': all_results,
+            'training_config': {
+                'optimize_hyperparameters': optimize_hyperparameters,
+                'used_precomputed_tfidf': True,
+                'tfidf_train_shape': X_train_tfidf.shape,
+                'tfidf_test_shape': X_test_tfidf.shape,
+                'train_samples': len(y_train),
+                'test_samples': len(y_test)
+            }
+        }
+        
+        # Print summary
+        self.print_summary(final_results)
+        
+        # Save results
         if save_results:
-            self.save_results_to_json(results)
+            self.save_results_to_json(final_results)
         
-        return results
+        return final_results
