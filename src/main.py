@@ -194,3 +194,163 @@ print("PIPELINE COMPLETED SUCCESSFULLY!")
 print(f"="*100)
 print("Check the 'reports/' directory for detailed JSON results.")
 print(f"="*100)
+
+##### LDA TOPIC MODELING #####
+# === LDA GRID-SEARCH OVER N_TOPICS ===
+from lda_model import LDATopicModeler
+import pandas as pd
+import numpy as np
+import time
+
+def _tokens_to_text_list(series_or_list):
+    """
+    Join list-of-tokens -> string cho CountVectorizer.
+    """
+    if isinstance(series_or_list, pd.Series):
+        series_or_list = series_or_list.tolist()
+    out = []
+    for x in series_or_list:
+        out.append(" ".join(x) if isinstance(x, list) else str(x))
+    return out
+
+def run_lda_experiments(
+    n_topics_list,
+    train_tokens,   # Series/list các token đã preprocess
+    test_tokens,    # Series/list các token đã preprocess
+    base_params=None,       # tham số chung cho LDA
+    vectorizer_params=None  # tham số CountVectorizer
+):
+    """
+    Chạy LDA cho nhiều giá trị n_topics và trả về DataFrame so sánh.
+    Tính train/test Perplexity, Log-likelihood, Log-perplexity và Coherence (c_v nếu có gensim).
+    """
+    train_texts = _tokens_to_text_list(train_tokens)
+    test_texts  = _tokens_to_text_list(test_tokens)
+
+    results = []
+    for k in n_topics_list:
+        print(f"\n>>> Running LDA with n_topics={k}")
+        params = dict(
+            n_topics=k,
+            max_iter=20,              # có thể tăng 30–50 nếu thời gian cho phép
+            learning_method="online", # thường hội tụ tốt trên tập lớn
+            random_state=42,
+            evaluate_every=-1
+        )
+        if base_params:
+            params.update(base_params)
+
+        # Khởi tạo model
+        lda = LDATopicModeler(
+            n_topics=params["n_topics"],
+            max_features=None,        # vocab tối đa (override bằng vectorizer_params nếu muốn)
+            min_df=5,
+            max_df=0.8,
+            random_state=params["random_state"],
+            max_iter=params["max_iter"],
+            learning_method=params["learning_method"],
+            evaluate_every=params["evaluate_every"],
+        )
+
+        # Điều chỉnh CountVectorizer (nếu có)
+        if vectorizer_params:
+            lda.vectorizer.set_params(**vectorizer_params)
+
+        t0 = time.time()
+        # Fit + transform train
+        doc_topic_train = lda.fit_transform(train_texts)
+        # Transform test
+        doc_topic_test  = lda.transform(test_texts)
+        fit_secs = time.time() - t0
+
+        # Tạo BOW để tính metric (API sklearn cần X)
+        X_train_bow = lda.vectorizer.transform(train_texts)
+        X_test_bow  = lda.vectorizer.transform(test_texts)
+
+        # Perplexity & Log-likelihood (sklearn)
+        train_perp = lda.model.perplexity(X_train_bow)
+        test_perp  = lda.model.perplexity(X_test_bow)
+        train_ll   = lda.model.score(X_train_bow)   # tổng log-likelihood
+        test_ll    = lda.model.score(X_test_bow)
+
+        # Log-perplexity (per-word): -loglik / total_word_count
+        # Lưu ý: sum() trên sparse trả về tổng số đếm từ
+        n_words_train = float(X_train_bow.sum())
+        n_words_test  = float(X_test_bow.sum())
+        train_log_perp = -train_ll / n_words_train if n_words_train > 0 else np.nan
+        test_log_perp  = -test_ll  / n_words_test  if n_words_test  > 0 else np.nan
+
+        # Coherence (c_v) nếu có gensim
+        coherence_cv = np.nan
+        try:
+            from gensim.models.coherencemodel import CoherenceModel
+            # Lấy top words mỗi topic để tính coherence
+            top_words = lda.get_top_words_per_topic(top_n=10)
+            topics_words = [[w for (w, _) in topic] for topic in top_words]
+            # texts cho gensim cần list-of-tokens
+            texts_tokens_for_coh = train_tokens.tolist() if isinstance(train_tokens, pd.Series) else train_tokens
+            cm = CoherenceModel(
+                topics=topics_words,
+                texts=texts_tokens_for_coh,
+                coherence="c_v"
+            )
+            coherence_cv = cm.get_coherence()
+        except Exception as e:
+            print(f"(Skip coherence for n_topics={k}: {e})")
+
+        results.append({
+            "n_topics": k,
+            "test_perplexity": test_perp,
+            "train_perplexity": train_perp,
+            "test_log_perplexity": test_log_perp,
+            "train_log_perplexity": train_log_perp,
+            "test_log_likelihood": test_ll,
+            "train_log_likelihood": train_ll,
+            "coherence_c_v": coherence_cv,
+            "fit_seconds": fit_secs,
+            "vocab_size": len(lda.vectorizer.get_feature_names_out()),
+            "n_train_docs": X_train_bow.shape[0]
+        })
+
+    df = pd.DataFrame(results)
+    # Sắp xếp theo test_perplexity tăng dần (tốt nhất ở trên)
+    df = df.sort_values(by=["test_perplexity"], ascending=True).reset_index(drop=True)
+    return df
+
+# Danh sách n_topics cần thử
+n_topics_list = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+
+# Tùy chọn: tham số CountVectorizer để cải thiện topic
+vectorizer_params = {
+    "max_features": 20000,  # tăng vocab cho tập lớn
+    "min_df": 5,            # bỏ từ quá hiếm
+    "max_df": 0.7           # bỏ từ quá phổ biến
+}
+
+# Tùy chọn: tham số LDA chung
+base_params = {
+    "max_iter": 20,
+    "learning_method": "online",
+    "random_state": 42,
+    "evaluate_every": -1
+}
+
+print("\n=== LDA GRID SEARCH START ===")
+lda_grid_df = run_lda_experiments(
+    n_topics_list=n_topics_list,
+    train_tokens=train_df["normalized_input"],
+    test_tokens=test_df["normalized_input"],
+    base_params=base_params,
+    vectorizer_params=vectorizer_params
+)
+
+print("\n=== LDA GRID SEARCH RESULTS (sorted by lowest Test Perplexity) ===")
+cols = [
+    "n_topics",
+    "test_perplexity", "train_perplexity",
+    "test_log_perplexity", "train_log_perplexity",
+    "test_log_likelihood", "train_log_likelihood",
+    "coherence_c_v",
+    "fit_seconds", "vocab_size", "n_train_docs"
+]
+print(lda_grid_df[cols].to_string(index=False))
