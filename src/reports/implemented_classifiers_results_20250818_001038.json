@@ -1,0 +1,41 @@
+{
+  "pipeline_summary": {
+    "timestamp": "2025-08-18T00:10:38.471424",
+    "total_pipeline_time_seconds": 1.06,
+    "models_trained": 3,
+    "comparison": {}
+  },
+  "individual_results": {
+    "Logistic_Regression_Implemented": {
+      "model_name": "LogisticRegression_Implemented",
+      "error": "LogisticRegressionAnalyzer.__init__() got an unexpected keyword argument 'optimize_hyperparameters'",
+      "training_time_seconds": 5.9604644775390625e-06
+    },
+    "Random_Forest_Implemented": {
+      "model_name": "RandomForest_Implemented",
+      "error": "RandomForestAnalyzer.__init__() got an unexpected keyword argument 'optimize_hyperparameters'",
+      "training_time_seconds": 2.86102294921875e-06
+    },
+    "Gradient_Boosting_Implemented": {
+      "model_name": "GradientBoosting_Implemented",
+      "error": "'LabelEncoder' object has no attribute 'classes_'",
+      "training_time_seconds": 1.059689998626709
+    }
+  },
+  "training_config": {
+    "optimize_hyperparameters": true,
+    "used_precomputed_tfidf": true,
+    "used_implemented_classifiers": true,
+    "tfidf_train_shape": [
+      50000,
+      35000
+    ],
+    "tfidf_test_shape": [
+      10000,
+      35000
+    ],
+    "train_samples": 50000,
+    "test_samples": 10000,
+    "implementation_note": "Using custom implemented classifier files instead of direct sklearn imports"
+  }
+}

@@ -5,11 +5,11 @@ import sys
 # from kaggle_data_loader import KaggleDataLoader
 from local_data_loader import LocalDataLoader as KaggleDataLoader
 CONFIG = {
-    "train_size": 500_000,
+    "train_size": 50_000,
     "test_size": 10000,
-    "tfidf_max_features": 5000,
-    "tfidf_min_df": 2,
-    "tfidf_max_df": 0.8,
+    "tfidf_max_features": 35000,  
+    "tfidf_min_df": 3,            
+    "tfidf_max_df": 0.85,         
     "ngram_range": (1, 2),
 }
 
@@ -197,12 +197,12 @@ model_trainer = ModelTrainer(output_dir=OUTPUT_REPORT)
 
 # Chạy training pipeline với tất cả models using pre-computed TF-IDF matrices
 print("Running training pipeline for all models using pre-computed TF-IDF matrices...")
-training_results = model_trainer.run_training_pipeline_with_tfidf(
+training_results = model_trainer.run_training_pipeline_with_simplified_classifiers_tfidf(
     X_train_tfidf=X_train_tfidf,
     X_test_tfidf=X_test_tfidf,
     y_train=train_df['label'],
     y_test=test_df['label'],
-    optimize_hyperparameters=False,  # Set True nếu muốn tối ưu hyperparameters (tốn thời gian)
+    optimize_hyperparameters=True,  # Set True nếu muốn tối ưu hyperparameters (tốn thời gian)
     save_results=True
 )
 

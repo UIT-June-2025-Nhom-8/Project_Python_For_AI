@@ -3,9 +3,9 @@ import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
-from sklearn.pipeline import Pipeline
+from scipy.sparse import hstack
 import pickle
 import os
 import time
@@ -13,262 +13,195 @@ import time
 
 class RandomForestAnalyzer:
     """
-    Random Forest Classifier được tối ưu hóa với hyperparameter tuning và feature engineering nâng cao
+    Simplified Random Forest Classifier optimized for binary sentiment analysis (Positive/Negative)
+    Focuses on: reducing overfitting, increasing accuracy, clear code structure
     """
     
-    def __init__(self, optimize_hyperparameters=True):
+    def __init__(self):
         """
-        Khởi tạo với tùy chọn tối ưu hyperparameters
-        
-        Args:
-            optimize_hyperparameters (bool): Có chạy GridSearch để tối ưu parameters hay không
+        Initialize Random Forest Analyzer with optimized settings for sentiment classification
         """
         self.model = None
-        self.best_params = None
-        self.optimize_hyperparameters = optimize_hyperparameters
         
-        # TF-IDF Vectorizer với cấu hình tối ưu
+        # TF-IDF Vectorizer - optimized for sentiment analysis
+        # Reduced features to prevent overfitting, focused on important sentiment words
         self.tfidf_vectorizer = TfidfVectorizer(
-            max_features=50000,  # Tăng từ 10k lên 50k
-            stop_words='english',
-            ngram_range=(1, 3),  # Sử dụng unigrams, bigrams, và trigrams
-            min_df=2,           # Loại bỏ từ xuất hiện ít hơn 2 lần
-            max_df=0.95,        # Loại bỏ từ xuất hiện quá nhiều
-            sublinear_tf=True,  # Áp dụng scaling logarithmic
+            max_features=15000,     # Reduced from 35k to prevent overfitting
+            stop_words='english',   # Remove common words
+            ngram_range=(1, 2),     # Unigrams + bigrams (trigrams removed to reduce complexity)
+            min_df=3,              # Increased to filter rare words (reduce noise)
+            max_df=0.9,            # Remove very common words
+            sublinear_tf=True,     # Log scaling for better performance
             analyzer='word',
-            lowercase=True
+            lowercase=True,
+            strip_accents='unicode' # Handle accented characters
         )
         
         self.label_encoder = LabelEncoder()
+        self.scaler = StandardScaler()  # For numerical features
+        
+        # Data storage
         self.X_train = None
         self.X_test = None
         self.y_train = None
         self.y_test = None
         self.results = {}
         self.training_time = 0
+        self.numerical_features = []
         
     def prepare_data(self, df, text_column, test_size=0.2, random_state=42):
         """
-        Chuẩn bị dữ liệu với feature engineering nâng cao
+        Prepare data for sentiment classification with anti-overfitting measures
         
         Args:
-            df (pd.DataFrame): DataFrame chứa dữ liệu
-            text_column (str): Tên cột chứa text cần phân tích
-            test_size (float): Tỷ lệ dữ liệu test
-            random_state (int): Random state cho reproducibility
+            df (pd.DataFrame): DataFrame containing the data
+            text_column (str): Name of text column for analysis
+            test_size (float): Test data ratio
+            random_state (int): Random state for reproducibility
         """
-        print("Preparing data with enhanced feature engineering...")
+        print("🔄 Preparing data for binary sentiment classification...")
         
-        # Kiểm tra và xử lý missing values
+        # 1. Handle missing values
         df[text_column] = df[text_column].fillna('')
+        print(f"✅ Cleaned missing values in text column")
         
-        # Feature engineering: Kết hợp text features
-        text_features = []
-        if text_column in df.columns:
-            text_features.append(text_column)
+        # 2. Choose text column (prefer processed_text if available)
+        text_to_use = 'processed_text' if 'processed_text' in df.columns else text_column
+        print(f"📝 Using text column: {text_to_use}")
+        print(f"📋 Sample text: {df[text_to_use].iloc[0][:100]}...")
         
-        # Nếu có processed_text thì ưu tiên sử dụng
-        if 'processed_text' in df.columns:
-            text_to_use = 'processed_text'
-        else:
-            text_to_use = text_column
-        
-        print(f"Using text column: {text_to_use}")
-        print(f"Sample text: {df[text_to_use].iloc[0][:100]}...")
-        
-        # Vectorize text data với cấu hình tối ưu
-        print("Vectorizing text with enhanced TF-IDF...")
+        # 3. Create TF-IDF features (main features for sentiment analysis)
+        print("🔍 Creating TF-IDF features optimized for sentiment...")
         X_text = self.tfidf_vectorizer.fit_transform(df[text_to_use])
-        print(f"TF-IDF matrix shape: {X_text.shape}")
+        print(f"📊 TF-IDF matrix shape: {X_text.shape}")
         
-        # Thêm numerical features nếu có
+        # 4. Add simple numerical features (if available)
+        # Only include features that are likely to help with sentiment
         numerical_features = []
-        for col in df.columns:
-            if col.endswith('_count') or col.endswith('_length') or col.startswith('has_'):
-                if col in df.columns and df[col].dtype in ['int64', 'float64']:
-                    numerical_features.append(col)
+        potential_features = ['text_length', 'exclamation_count', 'question_count', 
+                            'uppercase_count', 'negation_count', 'word_count']
         
+        for col in potential_features:
+            if col in df.columns and df[col].dtype in ['int64', 'float64']:
+                numerical_features.append(col)
+        
+        # 5. Combine features if numerical features exist
         if numerical_features:
-            print(f"Adding {len(numerical_features)} numerical features")
-            from scipy.sparse import hstack
-            from sklearn.preprocessing import StandardScaler
+            print(f"➕ Adding {len(numerical_features)} numerical features: {numerical_features}")
             
-            # Chuẩn hóa numerical features
-            scaler = StandardScaler()
-            numerical_data = scaler.fit_transform(df[numerical_features])
+            # Scale numerical features to prevent dominance
+            numerical_data = self.scaler.fit_transform(df[numerical_features])
             
-            # Kết hợp text features và numerical features
+            # Combine text and numerical features
             X = hstack([X_text, numerical_data])
-            self.scaler = scaler
             self.numerical_features = numerical_features
         else:
-            print("No numerical features found, using only text features")
+            print("📝 Using only text features (no additional numerical features found)")
             X = X_text
-            self.scaler = None
             self.numerical_features = []
         
-        # Encode labels
+        # 6. Encode sentiment labels (binary classification)
         y = self.label_encoder.fit_transform(df['sentiment'])
+        print(f"🏷️  Sentiment classes: {self.label_encoder.classes_}")
         
-        # Split data with stratification để đảm bảo phân bố đều
+        # 7. Split data with stratification (maintain class balance)
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
             X, y, test_size=test_size, random_state=random_state, stratify=y
         )
         
-        print(f"Training set size: {self.X_train.shape}")
-        print(f"Test set size: {self.X_test.shape}")
-        print(f"Feature dimensions: {X.shape[1]} features")
-        print(f"Class distribution in training: {np.bincount(self.y_train)}")
+        # 8. Display data summary
+        print(f"✅ Data preparation completed!")
+        print(f"📊 Training set: {self.X_train.shape[0]} samples")
+        print(f"📊 Test set: {self.X_test.shape[0]} samples")
+        print(f"📊 Total features: {X.shape[1]}")
+        print(f"📊 Class distribution in training: {dict(zip(self.label_encoder.classes_, np.bincount(self.y_train)))}")
         
-    def get_optimized_hyperparameters(self):
+        # 9. Check for potential overfitting risks
+        if X.shape[1] > self.X_train.shape[0] * 0.1:
+            print("⚠️  Warning: High feature-to-sample ratio detected. Model tuned to prevent overfitting.")
+        
+        return True
+        
+    def initialize_model(self):
         """
-        Định nghĩa các hyperparameters để tối ưu
-        
-        Returns:
-            dict: Dictionary chứa các hyperparameters để test
+        Initialize Random Forest with anti-overfitting parameters
+        Optimized specifically for binary sentiment classification
         """
-        # Tối ưu cho tốc độ và hiệu suất trên MacBook Air 8GB RAM
-        param_grid = {
-            'n_estimators': [200, 300, 400],  # Tăng số trees
-            'max_depth': [15, 20, 25, None],   # Tăng độ sâu
-            'min_samples_split': [2, 5, 10],
-            'min_samples_leaf': [1, 2, 4],
-            'max_features': ['sqrt', 'log2', 0.3, 0.5],  # Thử các cách chọn features
-            'bootstrap': [True, False],
-            'class_weight': [None, 'balanced', 'balanced_subsample']  # Xử lý imbalanced data
-        }
-        
-        return param_grid
-    
-    def optimize_hyperparameters(self, cv_folds=3, n_jobs=-1):
-        """
-        Tối ưu hyperparameters sử dụng GridSearchCV
-        
-        Args:
-            cv_folds (int): Số folds cho cross-validation
-            n_jobs (int): Số parallel jobs (-1 để dùng tất cả cores)
+        # Anti-overfitting parameters based on best practices for sentiment analysis
+        self.model = RandomForestClassifier(
+            # Tree parameters - prevent overfitting
+            n_estimators=100,           # Reduced from 300 (fewer trees = less overfitting)
+            max_depth=10,               # Limited depth to prevent memorization
+            min_samples_split=20,       # Increased minimum samples to split (more robust)
+            min_samples_leaf=10,        # Increased minimum samples per leaf (smoother decisions)
             
-        Returns:
-            dict: Best parameters found
-        """
-        if self.X_train is None:
-            raise ValueError("Chưa chuẩn bị dữ liệu. Hãy gọi prepare_data() trước.")
-        
-        print("Starting hyperparameter optimization...")
-        print("This may take several minutes on MacBook Air 8GB RAM...")
-        
-        # Khởi tạo base model
-        base_model = RandomForestClassifier(
-            random_state=42,
-            n_jobs=n_jobs,
-            warm_start=False  # Tắt warm_start cho GridSearch
+            # Feature selection - reduce model complexity
+            max_features='sqrt',        # Use sqrt of features (prevents relying on too many features)
+            
+            # Sampling parameters - add randomness to prevent overfitting
+            bootstrap=True,             # Use bootstrap sampling
+            class_weight='balanced',    # Handle class imbalance automatically
+            
+            # Performance parameters
+            random_state=42,            # Reproducible results
+            n_jobs=-1,                  # Use all CPU cores
+            warm_start=False            # Fresh training each time
         )
         
-        # Get parameter grid
-        param_grid = self.get_optimized_hyperparameters()
+        print("🌲 Initialized Random Forest with anti-overfitting parameters:")
+        print(f"   📊 Trees: {self.model.n_estimators}")
+        print(f"   📏 Max depth: {self.model.max_depth}")
+        print(f"   🔢 Min samples split: {self.model.min_samples_split}")
+        print(f"   🍃 Min samples leaf: {self.model.min_samples_leaf}")
+        print(f"   🎯 Max features: {self.model.max_features}")
+        print(f"   ⚖️  Class weight: {self.model.class_weight}")
         
-        # GridSearchCV với tối ưu cho memory
-        grid_search = GridSearchCV(
-            estimator=base_model,
-            param_grid=param_grid,
-            cv=cv_folds,
-            scoring='f1_macro',  # Sử dụng F1-macro cho balanced evaluation
-            n_jobs=min(n_jobs, 2),  # Giới hạn n_jobs để tránh out of memory
-            verbose=1,
-            pre_dispatch='2*n_jobs',  # Giới hạn số jobs pre-dispatch
-            error_score='raise'
-        )
-        
-        print(f"Testing {len(param_grid['n_estimators']) * len(param_grid['max_depth']) * len(param_grid['min_samples_split']) * len(param_grid['min_samples_leaf']) * len(param_grid['max_features']) * len(param_grid['bootstrap']) * len(param_grid['class_weight'])} parameter combinations...")
-        
-        # Fit GridSearch
-        start_time = time.time()
-        grid_search.fit(self.X_train, self.y_train)
-        optimization_time = time.time() - start_time
-        
-        # Lưu best parameters
-        self.best_params = grid_search.best_params_
-        self.best_score = grid_search.best_score_
-        
-        print(f"\nHyperparameter optimization completed in {optimization_time:.2f} seconds")
-        print(f"Best cross-validation F1-score: {self.best_score:.4f}")
-        print(f"Best parameters: {self.best_params}")
-        
-        return self.best_params
-    
-    def initialize_model(self, **kwargs):
-        """
-        Khởi tạo RandomForestClassifier với parameters tối ưu
-        
-        Args:
-            **kwargs: Custom parameters (sẽ override optimized parameters)
-        """
-        if self.optimize_hyperparameters and self.best_params is None:
-            print("Running hyperparameter optimization...")
-            self.optimize_hyperparameters()
-            params = self.best_params.copy()
-        else:
-            # Default optimized parameters
-            params = {
-                'n_estimators': 300,
-                'max_depth': 20,
-                'min_samples_split': 5,
-                'min_samples_leaf': 2,
-                'max_features': 'sqrt',
-                'bootstrap': True,
-                'class_weight': 'balanced',
-                'random_state': 42,
-                'n_jobs': -1,
-                'warm_start': False
-            }
-        
-        # Override với custom parameters
-        params.update(kwargs)
-        
-        self.model = RandomForestClassifier(**params)
-        print(f"Initialized optimized RandomForestClassifier with parameters:")
-        for key, value in params.items():
-            print(f"  {key}: {value}")
+        return self.model
         
     def train_model(self):
         """
-        Huấn luyện model với enhanced training process
+        Train Random Forest model with overfitting monitoring
         
         Returns:
-            dict: Kết quả huấn luyện chi tiết
+            dict: Detailed training results with overfitting analysis
         """
         if self.model is None:
             self.initialize_model()
             
         if self.X_train is None:
-            raise ValueError("Chưa chuẩn bị dữ liệu. Hãy gọi prepare_data() trước.")
+            raise ValueError("❌ Data not prepared. Call prepare_data() first.")
             
-        print("Training optimized RandomForestClassifier...")
-        print(f"Training on {self.X_train.shape[0]} samples with {self.X_train.shape[1]} features")
+        print("🚀 Training Random Forest for sentiment classification...")
+        print(f"📊 Training samples: {self.X_train.shape[0]}")
+        print(f"📊 Features: {self.X_train.shape[1]}")
         
-        # Training với time tracking
+        # Train model with timing
         start_time = time.time()
         self.model.fit(self.X_train, self.y_train)
         self.training_time = time.time() - start_time
         
-        print(f"Training completed in {self.training_time:.2f} seconds")
+        print(f"✅ Training completed in {self.training_time:.2f} seconds")
         
-        # Predictions
-        print("Making predictions...")
+        # Make predictions for evaluation
+        print("🔍 Evaluating model performance...")
         train_pred = self.model.predict(self.X_train)
         test_pred = self.model.predict(self.X_test)
         
-        # Calculate metrics
+        # Calculate comprehensive metrics
         train_acc = accuracy_score(self.y_train, train_pred)
         test_acc = accuracy_score(self.y_test, test_pred)
         
-        # F1-scores cho từng class
+        # F1 scores (important for sentiment analysis)
+        train_f1 = f1_score(self.y_train, train_pred, average='weighted')
+        test_f1 = f1_score(self.y_test, test_pred, average='weighted')
         train_f1_macro = f1_score(self.y_train, train_pred, average='macro')
         test_f1_macro = f1_score(self.y_test, test_pred, average='macro')
-        train_f1_weighted = f1_score(self.y_train, train_pred, average='weighted')
-        test_f1_weighted = f1_score(self.y_test, test_pred, average='weighted')
         
-        # Classification report chi tiết
+        # Overfitting analysis
+        overfitting_gap = train_acc - test_acc
+        f1_overfitting_gap = train_f1 - test_f1
+        
+        # Classification report for detailed analysis
         report = classification_report(
             self.y_test, test_pred, 
             target_names=self.label_encoder.classes_,
@@ -278,250 +211,284 @@ class RandomForestAnalyzer:
         # Confusion matrix
         cm = confusion_matrix(self.y_test, test_pred)
         
-        # Feature importances
+        # Feature importance analysis
         feature_names = self.tfidf_vectorizer.get_feature_names_out()
         if self.numerical_features:
             feature_names = np.concatenate([feature_names, self.numerical_features])
         
-        # Lưu kết quả
+        # Store comprehensive results
         self.results = {
-            'model_name': 'OptimizedRandomForestClassifier',
+            'model_name': 'Optimized_RandomForest_SentimentAnalysis',
             'training_time': self.training_time,
+            
+            # Accuracy metrics
             'train_accuracy': train_acc,
             'test_accuracy': test_acc,
+            'accuracy_overfitting_gap': overfitting_gap,
+            
+            # F1 metrics (more important for sentiment analysis)
+            'train_f1_weighted': train_f1,
+            'test_f1_weighted': test_f1,
             'train_f1_macro': train_f1_macro,
             'test_f1_macro': test_f1_macro,
-            'train_f1_weighted': train_f1_weighted,
-            'test_f1_weighted': test_f1_weighted,
-            'overfitting_gap': train_acc - test_acc,
+            'f1_overfitting_gap': f1_overfitting_gap,
+            
+            # Detailed analysis
             'classification_report': report,
             'confusion_matrix': cm,
-            'feature_importance': self.model.feature_importances_,
+            'feature_importances': self.model.feature_importances_,
             'feature_names': feature_names,
-            'best_params': self.best_params if hasattr(self, 'best_params') else None,
+            
+            # Model info
             'n_features': self.X_train.shape[1],
-            'n_samples': self.X_train.shape[0]
+            'n_samples': self.X_train.shape[0],
+            'model_params': self.model.get_params()
         }
         
-        print(f"\n=== TRAINING RESULTS ===")
-        print(f"Training Accuracy: {train_acc:.4f}")
-        print(f"Test Accuracy: {test_acc:.4f}")
-        print(f"Overfitting Gap: {train_acc - test_acc:.4f}")
-        print(f"F1-Score (Macro): {test_f1_macro:.4f}")
-        print(f"F1-Score (Weighted): {test_f1_weighted:.4f}")
-        print(f"Training Time: {self.training_time:.2f} seconds")
+        # Display results with overfitting analysis
+        print(f"\n🎯 TRAINING RESULTS:")
+        print(f"📈 Training Accuracy: {train_acc:.4f}")
+        print(f"📊 Test Accuracy: {test_acc:.4f}")
+        print(f"📉 Overfitting Gap: {overfitting_gap:.4f}", end="")
+        
+        # Overfitting warning
+        if overfitting_gap > 0.1:
+            print(" ⚠️  HIGH - Consider reducing model complexity")
+        elif overfitting_gap > 0.05:
+            print(" ⚡ MODERATE - Model is acceptable")
+        else:
+            print(" ✅ LOW - Excellent generalization")
+            
+        print(f"🎯 F1-Score (Weighted): {test_f1:.4f}")
+        print(f"🎯 F1-Score (Macro): {test_f1_macro:.4f}")
+        print(f"⏱️  Training Time: {self.training_time:.2f}s")
         
         return self.results
     
-    def evaluate_model_detailed(self):
+    def evaluate_model(self):
         """
-        Đánh giá chi tiết model với các metrics nâng cao
+        Comprehensive model evaluation with focus on sentiment analysis metrics
         """
         if not self.results:
-            raise ValueError("Chưa huấn luyện model. Hãy gọi train_model() trước.")
+            raise ValueError("❌ Model not trained. Call train_model() first.")
             
-        print("\n=== DETAILED MODEL EVALUATION ===")
+        print("\n📊 DETAILED SENTIMENT ANALYSIS EVALUATION")
+        print("=" * 50)
         
-        # Basic metrics
-        print(f"Model: {self.results['model_name']}")
-        print(f"Training Time: {self.results['training_time']:.2f}s")
-        print(f"Features: {self.results['n_features']}")
-        print(f"Training Samples: {self.results['n_samples']}")
+        # Basic model info
+        print(f"🤖 Model: {self.results['model_name']}")
+        print(f"⏱️  Training Time: {self.results['training_time']:.2f}s")
+        print(f"📊 Features: {self.results['n_features']:,}")
+        print(f"📊 Training Samples: {self.results['n_samples']:,}")
         
-        print(f"\nAccuracy Metrics:")
-        print(f"  Training: {self.results['train_accuracy']:.4f}")
-        print(f"  Test: {self.results['test_accuracy']:.4f}")
-        print(f"  Overfitting Gap: {self.results['overfitting_gap']:.4f}")
+        # Performance metrics
+        print(f"\n🎯 PERFORMANCE METRICS:")
+        print(f"   📈 Training Accuracy: {self.results['train_accuracy']:.4f}")
+        print(f"   📊 Test Accuracy: {self.results['test_accuracy']:.4f}")
+        print(f"   📉 Overfitting Gap: {self.results['accuracy_overfitting_gap']:.4f}")
         
-        print(f"\nF1-Score Metrics:")
-        print(f"  Macro F1 (Test): {self.results['test_f1_macro']:.4f}")
-        print(f"  Weighted F1 (Test): {self.results['test_f1_weighted']:.4f}")
+        # Overfitting assessment
+        if self.results['accuracy_overfitting_gap'] > 0.1:
+            print("   ⚠️  HIGH overfitting - consider simpler model")
+        elif self.results['accuracy_overfitting_gap'] > 0.05:
+            print("   ⚡ MODERATE overfitting - acceptable for production")
+        else:
+            print("   ✅ LOW overfitting - excellent generalization")
         
-        # Per-class metrics
-        print(f"\nPer-Class Performance:")
+        # F1 scores (critical for sentiment analysis)
+        print(f"\n🎯 F1-SCORE ANALYSIS:")
+        print(f"   🎯 Weighted F1 (Test): {self.results['test_f1_weighted']:.4f}")
+        print(f"   🎯 Macro F1 (Test): {self.results['test_f1_macro']:.4f}")
+        print(f"   📉 F1 Overfitting Gap: {self.results['f1_overfitting_gap']:.4f}")
+        
+        # Per-class performance (Positive vs Negative)
+        print(f"\n📊 PER-CLASS PERFORMANCE:")
         report = self.results['classification_report']
         for class_name in self.label_encoder.classes_:
             if class_name in report:
                 metrics = report[class_name]
-                print(f"  {class_name}:")
-                print(f"    Precision: {metrics['precision']:.4f}")
-                print(f"    Recall: {metrics['recall']:.4f}")
-                print(f"    F1-Score: {metrics['f1-score']:.4f}")
-                print(f"    Support: {int(metrics['support'])}")
+                print(f"   {class_name.upper()}:")
+                print(f"     🎯 Precision: {metrics['precision']:.4f}")
+                print(f"     🔍 Recall: {metrics['recall']:.4f}")
+                print(f"     ⚖️  F1-Score: {metrics['f1-score']:.4f}")
+                print(f"     📊 Support: {int(metrics['support'])}")
         
-        # Confusion Matrix Analysis
+        # Confusion matrix analysis
         cm = self.results['confusion_matrix']
-        tn, fp, fn, tp = cm.ravel() if cm.size == 4 else (cm[0,0], cm[0,1], cm[1,0], cm[1,1])
+        print(f"\n🔍 CONFUSION MATRIX ANALYSIS:")
         
-        print(f"\nConfusion Matrix Analysis:")
-        print(f"  True Negatives: {tn}")
-        print(f"  False Positives: {fp}")
-        print(f"  False Negatives: {fn}")
-        print(f"  True Positives: {tp}")
+        if cm.size == 4:  # Binary classification
+            tn, fp, fn, tp = cm.ravel()
+            print(f"   ✅ True Negatives: {tn}")
+            print(f"   ❌ False Positives: {fp}")
+            print(f"   ❌ False Negatives: {fn}")
+            print(f"   ✅ True Positives: {tp}")
+            
+            # Calculate error rates
+            total = tn + fp + fn + tp
+            fpr = fp / (fp + tn) if (fp + tn) > 0 else 0
+            fnr = fn / (fn + tp) if (fn + tp) > 0 else 0
+            
+            print(f"   📊 False Positive Rate: {fpr:.4f}")
+            print(f"   📊 False Negative Rate: {fnr:.4f}")
+            print(f"   📊 Overall Error Rate: {(fp + fn)/total:.4f}")
         
-        # Error rates
-        total = tn + fp + fn + tp
-        fpr = fp / (fp + tn) if (fp + tn) > 0 else 0
-        fnr = fn / (fn + tp) if (fn + tp) > 0 else 0
-        
-        print(f"  False Positive Rate: {fpr:.4f}")
-        print(f"  False Negative Rate: {fnr:.4f}")
-        print(f"  Error Rate: {(fp + fn)/total:.4f}")
-        
-        # Feature importance analysis
-        if self.results['feature_importance'] is not None:
-            print(f"\nTop 15 Most Important Features:")
-            feature_importance_df = pd.DataFrame({
+        # Top sentiment indicators (most important features)
+        print(f"\n🔥 TOP 10 SENTIMENT INDICATORS:")
+        if self.results['feature_importances'] is not None:
+            importance_df = pd.DataFrame({
                 'feature': self.results['feature_names'],
-                'importance': self.results['feature_importance']
+                'importance': self.results['feature_importances']
             }).sort_values('importance', ascending=False)
             
-            for i, (_, row) in enumerate(feature_importance_df.head(15).iterrows()):
-                print(f"  {i+1:2d}. {row['feature'][:30]:30s}: {row['importance']:.6f}")
+            for i, (_, row) in enumerate(importance_df.head(10).iterrows()):
+                feature_name = row['feature'][:25]  # Truncate long feature names
+                print(f"   {i+1:2d}. {feature_name:25s}: {row['importance']:.6f}")
         
+        print("=" * 50)
         return self.results
     
-    def cross_validate_model(self, cv_folds=5, scoring='f1_macro'):
+    def predict_sentiment(self, text_data):
         """
-        Cross-validation để đánh giá độ ổn định của model
+        Predict sentiment for new text data with confidence scores
         
         Args:
-            cv_folds (int): Số folds cho cross-validation
-            scoring (str): Metric để đánh giá
+            text_data (str or list): Text to analyze
             
         Returns:
-            dict: Kết quả cross-validation
+            list: Predictions with confidence scores
         """
         if self.model is None:
-            self.initialize_model()
+            raise ValueError("❌ Model not trained. Call train_model() first.")
             
-        if self.X_train is None:
-            raise ValueError("Chưa chuẩn bị dữ liệu. Hãy gọi prepare_data() trước.")
-        
-        print(f"Running {cv_folds}-fold cross-validation with {scoring} scoring...")
-        
-        # Combine train and test for cross-validation
-        from scipy.sparse import vstack
-        X_combined = vstack([self.X_train, self.X_test])
-        y_combined = np.concatenate([self.y_train, self.y_test])
-        
-        # Cross-validation
-        cv_scores = cross_val_score(
-            self.model, X_combined, y_combined, 
-            cv=cv_folds, scoring=scoring, n_jobs=-1
-        )
-        
-        cv_results = {
-            'cv_scores': cv_scores,
-            'cv_mean': cv_scores.mean(),
-            'cv_std': cv_scores.std(),
-            'cv_min': cv_scores.min(),
-            'cv_max': cv_scores.max()
-        }
-        
-        print(f"Cross-Validation Results ({scoring}):")
-        print(f"  Individual scores: {cv_scores}")
-        print(f"  Mean: {cv_results['cv_mean']:.4f}")
-        print(f"  Std: {cv_results['cv_std']:.4f}")
-        print(f"  Min: {cv_results['cv_min']:.4f}")
-        print(f"  Max: {cv_results['cv_max']:.4f}")
-        
-        return cv_results
-    
-    def predict_with_confidence(self, text_data):
-        """
-        Dự đoán với confidence scores
-        
-        Args:
-            text_data (list or str): Text data để dự đoán
-            
-        Returns:
-            list: List of tuples (prediction, confidence)
-        """
-        if self.model is None:
-            raise ValueError("Chưa huấn luyện model.")
-            
+        # Ensure input is list
         if isinstance(text_data, str):
             text_data = [text_data]
         
-        # Vectorize new data
+        print(f"🔍 Analyzing sentiment for {len(text_data)} text(s)...")
+        
+        # Vectorize new text
         X_text_new = self.tfidf_vectorizer.transform(text_data)
         
-        # Add numerical features if available
-        if hasattr(self, 'scaler') and self.scaler is not None:
-            # Tạo dummy numerical features (tất cả = 0)
+        # Add numerical features if model was trained with them
+        if self.numerical_features:
+            # Create dummy numerical features (zeros for new data)
             numerical_dummy = np.zeros((len(text_data), len(self.numerical_features)))
             numerical_scaled = self.scaler.transform(numerical_dummy)
-            
-            from scipy.sparse import hstack
             X_new = hstack([X_text_new, numerical_scaled])
         else:
             X_new = X_text_new
         
-        # Predictions và probabilities
+        # Get predictions and probabilities
         predictions = self.model.predict(X_new)
         probabilities = self.model.predict_proba(X_new)
         
-        # Convert predictions back to labels
-        prediction_labels = self.label_encoder.inverse_transform(predictions)
+        # Convert to sentiment labels
+        sentiment_labels = self.label_encoder.inverse_transform(predictions)
         
-        # Get confidence (max probability)
-        confidences = np.max(probabilities, axis=1)
-        
+        # Prepare results with confidence
         results = []
-        for i, (pred, conf) in enumerate(zip(prediction_labels, confidences)):
+        for i, (pred, probs) in enumerate(zip(sentiment_labels, probabilities)):
+            confidence = np.max(probs)  # Highest probability
+            
+            # Create probability dict for both classes
+            prob_dict = {}
+            for j, class_name in enumerate(self.label_encoder.classes_):
+                prob_dict[class_name] = probs[j]
+            
             results.append({
-                'text': text_data[i][:50] + '...' if len(text_data[i]) > 50 else text_data[i],
-                'prediction': pred,
-                'confidence': conf,
-                'probabilities': {
-                    class_name: prob for class_name, prob 
-                    in zip(self.label_encoder.classes_, probabilities[i])
-                }
+                'text_preview': text_data[i][:50] + '...' if len(text_data[i]) > 50 else text_data[i],
+                'predicted_sentiment': pred,
+                'confidence': confidence,
+                'probabilities': prob_dict
             })
         
         return results
     
-    def save_model(self, model_path='models/optimized_random_forest_model.pkl'):
+    def save_model(self, model_path='../output/models/random_forest_sentiment_model.pkl'):
         """
-        Lưu optimized model
+        Save the trained model and all components
+        
+        Args:
+            model_path (str): Path to save the model
         """
         if self.model is None:
-            raise ValueError("Chưa huấn luyện model.")
+            raise ValueError("❌ No model to save. Train model first.")
             
+        # Create directory if it doesn't exist
         os.makedirs(os.path.dirname(model_path), exist_ok=True)
         
-        model_data = {
+        # Package all model components
+        model_package = {
             'model': self.model,
             'tfidf_vectorizer': self.tfidf_vectorizer,
             'label_encoder': self.label_encoder,
             'scaler': self.scaler if hasattr(self, 'scaler') else None,
-            'numerical_features': self.numerical_features if hasattr(self, 'numerical_features') else [],
+            'numerical_features': self.numerical_features,
             'results': self.results,
-            'best_params': self.best_params if hasattr(self, 'best_params') else None
+            'model_type': 'RandomForestSentimentAnalyzer'
         }
         
+        # Save model
         with open(model_path, 'wb') as f:
-            pickle.dump(model_data, f)
+            pickle.dump(model_package, f)
             
-        print(f"Optimized model saved to: {model_path}")
+        print(f"✅ Model saved successfully to: {model_path}")
+        print(f"📊 Model accuracy: {self.results.get('test_accuracy', 'Unknown'):.4f}")
         
-    def load_model(self, model_path='models/optimized_random_forest_model.pkl'):
+    def load_model(self, model_path='../output/models/random_forest_sentiment_model.pkl'):
         """
-        Load optimized model
+        Load a previously saved model
+        
+        Args:
+            model_path (str): Path to the saved model
         """
         if not os.path.exists(model_path):
-            raise FileNotFoundError(f"Model not found: {model_path}")
+            raise FileNotFoundError(f"❌ Model file not found: {model_path}")
             
+        # Load model package
         with open(model_path, 'rb') as f:
-            model_data = pickle.load(f)
+            model_package = pickle.load(f)
             
-        self.model = model_data['model']
-        self.tfidf_vectorizer = model_data['tfidf_vectorizer']
-        self.label_encoder = model_data['label_encoder']
-        self.scaler = model_data.get('scaler')
-        self.numerical_features = model_data.get('numerical_features', [])
-        self.results = model_data['results']
-        self.best_params = model_data.get('best_params')
+        # Restore all components
+        self.model = model_package['model']
+        self.tfidf_vectorizer = model_package['tfidf_vectorizer']
+        self.label_encoder = model_package['label_encoder']
+        self.scaler = model_package.get('scaler')
+        self.numerical_features = model_package.get('numerical_features', [])
+        self.results = model_package.get('results', {})
         
-        print(f"Optimized model loaded from: {model_path}")
+        print(f"✅ Model loaded successfully from: {model_path}")
+        print(f"🤖 Model type: {model_package.get('model_type', 'Unknown')}")
+        if self.results:
+            print(f"📊 Previous accuracy: {self.results.get('test_accuracy', 'Unknown'):.4f}")
+    
+    def get_model_summary(self):
+        """
+        Get a summary of the current model state
+        
+        Returns:
+            dict: Model summary information
+        """
+        if self.model is None:
+            return {"status": "❌ Model not initialized"}
+            
+        summary = {
+            "model_status": "✅ Ready" if self.results else "⚠️ Trained but not evaluated",
+            "model_type": "Random Forest Classifier",
+            "sentiment_classes": self.label_encoder.classes_.tolist() if hasattr(self.label_encoder, 'classes_') else [],
+            "n_estimators": self.model.n_estimators,
+            "max_depth": self.model.max_depth,
+            "features_used": len(self.numerical_features) if self.numerical_features else 0,
+        }
+        
+        # Add performance metrics if available
+        if self.results:
+            summary.update({
+                "test_accuracy": f"{self.results.get('test_accuracy', 0):.4f}",
+                "f1_score": f"{self.results.get('test_f1_weighted', 0):.4f}",
+                "overfitting_gap": f"{self.results.get('accuracy_overfitting_gap', 0):.4f}",
+                "training_time": f"{self.results.get('training_time', 0):.2f}s"
+            })
+            
+        return summary
