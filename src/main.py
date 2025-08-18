@@ -1,10 +1,13 @@
 import pandas as pd
 import os
 import sys
+from lda_utils import run_lda_experiments, plot_coherence_and_perplexity
+
 
 def main():
     # from kaggle_data_loader import KaggleDataLoader
     from local_data_loader import LocalDataLoader as KaggleDataLoader
+
     CONFIG = {
         "train_size": 100000,
         "test_size": 10000,
@@ -188,10 +191,10 @@ def main():
     # Chạy training pipeline với tất cả models
     print("Running training pipeline for all models...")
     training_results = model_trainer.run_training_pipeline(
-        train_df=train_df, 
-        test_df=test_df, 
+        train_df=train_df,
+        test_df=test_df,
         optimize_hyperparameters=False,  # Set True nếu muốn tối ưu hyperparameters (tốn thời gian)
-        save_results=True
+        save_results=True,
     )
 
     print(f"\n" + "="*100)
@@ -201,7 +204,8 @@ def main():
     print(f"="*100)
 
     print(f"\n=== TOPIC MODEL TRAINING GENSIM LDA PIPELINE ===")
-    from gensim_lda import GensimLDA,run_lda_analysis
+    from gensim_lda import GensimLDA, run_lda_analysis
+
     gensimLDA = GensimLDA()
 
     print("\n=== TEXT PREPROCESSING ===")
@@ -228,14 +232,18 @@ def main():
         f"   - Average tokens per document: {train_df_gensimLDA['lda_input'].apply(len).mean():.2f}"
     )
 
-
     # Run LDA Topic Modeling
     print("\n" + "="*60)
     print("=== GENSIM LDA TOPIC MODELING ===")
     print("="*60)
 
     # Analyze với 50k samples
-    lda, lda_metrics = run_lda_analysis(train_df=train_df_gensimLDA,sample_size=CONFIG["train_size"], find_optimal=False, fixed_topics=11)
+    lda, lda_metrics = run_lda_analysis(
+        train_df=train_df_gensimLDA,
+        sample_size=CONFIG["train_size"],
+        find_optimal=False,
+        fixed_topics=11,
+    )
 
     # In kết quả vào final summary
 
@@ -247,7 +255,62 @@ def main():
     print(f"   - Perplexity: {lda_metrics['perplexity']:.4f}")
     print(f"   - Dictionary size: {lda_metrics['dictionary_size']}")
     print(f"   - Corpus size: {lda_metrics['corpus_size']}")
-    print(f"="*60)
+    print(f"=" * 60)
+
+    ####### SKLEARN LDA TOPIC MODELING ########
+    print(f"\n=== SKLEARN LDA TOPIC MODELING ===")
+    
+    # Danh sách n_topics cần thử
+    n_topics_list = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+
+    # Tùy chọn: tham số CountVectorizer để cải thiện topic
+    vectorizer_params = {
+        "max_features": 20000,  # tăng vocab cho tập lớn
+        "min_df": 5,  # bỏ từ quá hiếm
+        "max_df": 0.7,  # bỏ từ quá phổ biến
+    }
+
+    # tham số LDA chung
+    base_params = {
+        "max_iter": 20,
+        "learning_method": "online",
+        "random_state": 42,
+        "evaluate_every": -1,
+    }
+
+    print("\n=== LDA GRID SEARCH START ===")
+    lda_grid_df = run_lda_experiments(
+        n_topics_list=n_topics_list,
+        train_tokens=train_df["normalized_input"],
+        test_tokens=test_df["normalized_input"],
+        base_params=base_params,
+        vectorizer_params=vectorizer_params,
+    )
+
+    print("\n=== LDA GRID SEARCH RESULTS (sorted by lowest Test Perplexity) ===")
+    cols = [
+        "n_topics",
+        "test_perplexity",
+        "train_perplexity",
+        "test_log_perplexity",
+        "train_log_perplexity",
+        "test_log_likelihood",
+        "train_log_likelihood",
+        "coherence_c_v",
+        "fit_seconds",
+        "vocab_size",
+        "n_train_docs",
+    ]
+    print(lda_grid_df[cols].to_string(index=False))
+    
+    print("\n=== PLOTTING PERPLEXITY RESULTS ===")
+    
+    plot_coherence_and_perplexity(
+        lda_grid_df,
+        save_path=None,
+        show=True,
+    )
+
 
 if __name__ == "__main__":
     main()
