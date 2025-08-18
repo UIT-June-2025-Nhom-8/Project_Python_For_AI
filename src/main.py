@@ -1,6 +1,3 @@
-import pandas as pd
-import os
-import sys
 from lda_utils import run_lda_experiments, plot_coherence_and_perplexity
 
 
@@ -94,7 +91,10 @@ def main():
     print("\n2. WORD CLOUD GENERATION")
     try:
         text_analyzer.generate_wordcloud(
-            train_df, "input", figsize=(12, 6), save_path="src/images/wordcloud_train.png"
+            train_df,
+            "input",
+            figsize=(12, 6),
+            save_path="src/images/wordcloud_train.png",
         )
     except Exception as e:
         print(f"   Could not generate word cloud: {e}")
@@ -164,7 +164,9 @@ def main():
         word_stats = text_analyzer.analysis_results["word_analysis"]
         print(f"   - Vocabulary size: {corpus_stats['vocabulary_size']:,}")
         print(f"   - Total words: {corpus_stats['total_word_occurrences']:,}")
-        print(f"   - Average word length: {word_stats['average_word_length']} characters")
+        print(
+            f"   - Average word length: {word_stats['average_word_length']} characters"
+        )
         print(
             f"   - Most frequent word: '{word_stats['most_frequent_word'][0]}' ({word_stats['most_frequent_word'][1]:,} times)"
         )
@@ -197,11 +199,11 @@ def main():
         save_results=True,
     )
 
-    print(f"\n" + "="*100)
+    print(f"\n" + "=" * 100)
     print("PIPELINE COMPLETED SUCCESSFULLY!")
-    print(f"="*100)
+    print(f"=" * 100)
     print("Check the 'reports/' directory for detailed JSON results.")
-    print(f"="*100)
+    print(f"=" * 100)
 
     print(f"\n=== TOPIC MODEL TRAINING GENSIM LDA PIPELINE ===")
     from gensim_lda import GensimLDA, run_lda_analysis
@@ -233,9 +235,9 @@ def main():
     )
 
     # Run LDA Topic Modeling
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("=== GENSIM LDA TOPIC MODELING ===")
-    print("="*60)
+    print("=" * 60)
 
     # Analyze với 50k samples
     lda, lda_metrics = run_lda_analysis(
@@ -248,7 +250,7 @@ def main():
     # In kết quả vào final summary
 
     print(f"\nLDA Topic Modeling Results:")
-    print("="*60)
+    print("=" * 60)
     print(f"Training:")
     print(f"   - Number of topics: {lda_metrics['num_topics']}")
     print(f"   - Coherence Score: {lda_metrics['coherence_score']:.4f}")
@@ -259,7 +261,7 @@ def main():
 
     ####### SKLEARN LDA TOPIC MODELING ########
     print(f"\n=== SKLEARN LDA TOPIC MODELING ===")
-    
+
     # Danh sách n_topics cần thử
     n_topics_list = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 
@@ -302,9 +304,9 @@ def main():
         "n_train_docs",
     ]
     print(lda_grid_df[cols].to_string(index=False))
-    
+
     print("\n=== PLOTTING PERPLEXITY RESULTS ===")
-    
+
     plot_coherence_and_perplexity(
         lda_grid_df,
         save_path=None,
