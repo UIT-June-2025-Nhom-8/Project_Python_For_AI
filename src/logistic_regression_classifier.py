@@ -1,53 +1,52 @@
-from sklearn.linear_model import LogisticRegression
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
-from sklearn.pipeline import Pipeline
 import pandas as pd
 import numpy as np
 import os
 import pickle
 import time
+from sklearn.linear_model import LogisticRegression
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
 from scipy.sparse import hstack
 
 
 class LogisticRegressionAnalyzer:
     """
-    Lớp phân tích cảm xúc sử dụng Logistic Regression với tối ưu hóa nâng cao
+    Simplified Logistic Regression Classifier optimized for binary sentiment analysis
+    Focuses on: fast training, good generalization, interpretable coefficients
     """
     
-    def __init__(self, optimize_hyperparameters=True):
+    def __init__(self):
         """
-        Khởi tạo các thành phần của LogisticRegressionAnalyzer
-        
-        Args:
-            optimize_hyperparameters (bool): Có chạy GridSearch để tối ưu parameters hay không
+        Initialize Logistic Regression Analyzer optimized for sentiment classification
         """
         self.model = None
-        self.best_params = None
-        self.optimize_hyperparameters = optimize_hyperparameters
         
-        # TF-IDF Vectorizer với cấu hình tối ưu cho LogReg
+        # TF-IDF Vectorizer - optimized for Logistic Regression and sentiment analysis
+        # LogReg works well with moderate feature counts and proper regularization
         self.tfidf_vectorizer = TfidfVectorizer(
-            max_features=20000,  # Tối ưu cho LogReg - không cần quá nhiều features
-            stop_words='english',
-            ngram_range=(1, 2),  # Unigrams và bigrams
-            min_df=3,           # Loại bỏ từ xuất hiện ít hơn 3 lần
-            max_df=0.9,         # Loại bỏ từ xuất hiện quá nhiều
-            sublinear_tf=True,  # Áp dụng scaling logarithmic
+            max_features=35000,     # Optimal for LogReg - not too many features
+            stop_words=None,   # Remove common words
+            ngram_range=(1, 2),     # Unigrams + bigrams (sufficient for sentiment)
+            min_df=3,              # Filter rare words (reduce noise)
+            max_df=0.85,           # Remove very common words
+            sublinear_tf=True,     # Log scaling helps LogReg
             analyzer='word',
             lowercase=True,
             strip_accents='unicode'
         )
         
         self.label_encoder = LabelEncoder()
-        self.scaler = StandardScaler()  # Quan trọng cho LogReg
+        self.scaler = StandardScaler()  # Important for LogReg
+        
+        # Data storage
         self.X_train = None
         self.X_test = None
         self.y_train = None
         self.y_test = None
         self.results = {}
+        self.training_time = 0
         self.numerical_features = []
         self.training_time = 0
         
