@@ -2,8 +2,9 @@ from lda_utils import run_lda_experiments, plot_coherence_and_perplexity
 
 
 def main():
-    # from kaggle_data_loader import KaggleDataLoader
-    from local_data_loader import LocalDataLoader as KaggleDataLoader
+    from kaggle_data_loader import KaggleDataLoader
+
+    # from local_data_loader import LocalDataLoader as KaggleDataLoader
 
     CONFIG = {
         "train_size": 100000,

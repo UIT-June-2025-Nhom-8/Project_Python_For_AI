@@ -6,6 +6,7 @@ from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.feature_extraction.text import CountVectorizer
 from nltk.stem import SnowballStemmer
 
+
 class SKLearnLDATopicModeler:
     """
     A thin wrapper around scikit-learn's LatentDirichletAllocation for topic modeling
@@ -37,7 +38,7 @@ class SKLearnLDATopicModeler:
     Notes
     -----
     - This class expects *pre-tokenized* input (list of tokens per document) OR raw strings.
-      If you pass list-of-tokens, we will join with spaces before vectorizing.
+    If you pass list-of-tokens, we will join with spaces before vectorizing.
     - Uses CountVectorizer (bow) because LDA is a probabilistic count model (not TF-IDF).
     """
 
@@ -75,7 +76,7 @@ class SKLearnLDATopicModeler:
 
     @staticmethod
     def _ensure_texts(
-        texts: Union[pd.Series, List[Union[str, List[str]]]]
+        texts: Union[pd.Series, List[Union[str, List[str]]]],
     ) -> List[str]:
         """
         Ensure inputs are plain strings. If items are token lists, join them with spaces.
@@ -99,7 +100,9 @@ class SKLearnLDATopicModeler:
                 out.append(str(item))
         return out
 
-    def fit(self, texts: Union[pd.Series, List[Union[str, List[str]]]]) -> "LDATopicModeler":
+    def fit(
+        self, texts: Union[pd.Series, List[Union[str, List[str]]]]
+    ) -> "LDATopicModeler":
         """
         Fit the LDA model on training texts.
 
@@ -118,7 +121,9 @@ class SKLearnLDATopicModeler:
         self._is_fitted = True
         return self
 
-    def transform(self, texts: Union[pd.Series, List[Union[str, List[str]]]]) -> np.ndarray:
+    def transform(
+        self, texts: Union[pd.Series, List[Union[str, List[str]]]]
+    ) -> np.ndarray:
         """
         Transform texts into topic-distribution (document-topic) matrix.
 
@@ -137,7 +142,9 @@ class SKLearnLDATopicModeler:
         X = self.vectorizer.transform(docs)
         return self.model.transform(X)
 
-    def fit_transform(self, texts: Union[pd.Series, List[Union[str, List[str]]]]) -> np.ndarray:
+    def fit_transform(
+        self, texts: Union[pd.Series, List[Union[str, List[str]]]]
+    ) -> np.ndarray:
         """
         Fit the model and return topic-distributions for the same texts.
 
@@ -179,13 +186,13 @@ class SKLearnLDATopicModeler:
             top_ids = np.argsort(comp)[::-1][:top_n]
             topics.append([(words[i], float(comp[i])) for i in top_ids])
         return topics
-    
+
     from nltk.stem import SnowballStemmer
 
     def auto_label_topics(
         self,
         top_n: int = 10,
-        keywords_bank: dict[str, list[str]] | None = None,
+        keywords_bank=None,
         fallback_top_k: int = 3,
     ) -> list[dict]:
         """
@@ -195,7 +202,7 @@ class SKLearnLDATopicModeler:
         ----------
         top_n : int, default=10
             Number of top words per topic to consider when labeling.
-        keywords_bank : dict[str, list[str]] | None
+        keywords_bank : dict or None
             Optional mapping label -> list of indicative keywords.
             If None, a default general-purpose bank for e-commerce reviews is used.
         fallback_top_k : int, default=3
@@ -226,24 +233,157 @@ class SKLearnLDATopicModeler:
         if keywords_bank is None:
             keywords_bank = {
                 "electronics": [
-                    "phone","smartphone","battery","screen","display","charge","camera",
-                    "laptop","computer","tablet","android","iphone","headphone","bluetooth","app"
+                    "phone",
+                    "smartphone",
+                    "battery",
+                    "screen",
+                    "display",
+                    "charge",
+                    "camera",
+                    "laptop",
+                    "computer",
+                    "tablet",
+                    "android",
+                    "iphone",
+                    "headphone",
+                    "bluetooth",
+                    "app",
                 ],
-                "books": ["book","story","novel","author","read","chapter","plot","literature"],
-                "clothing": ["shirt","jeans","dress","fit","size","fabric","material","wear"],
-                "beauty": ["skin","makeup","cream","lotion","hair","fragrance","smell","shade"],
-                "home_kitchen": ["kitchen","cook","knife","pan","pot","coffee","vacuum","clean"],
-                "sports_outdoors": ["sport","run","hike","bike","gym","camp","outdoor","ball"],
-                "toys_games": ["toy","game","play","kid","puzzle","lego","board","controller"],
-                "grocery_food": ["food","snack","taste","flavor","chocolate","coffee","tea"],
-                "health": ["vitamin","supplement","pill","allergy","medical","health","symptom"],
-                "pet": ["dog","cat","pet","litter","treat","leash","kennel","aquarium"],
-                "music": ["music","song","album","sound","speaker","headphone","audio"],
-                "movies_tv": ["movie","film","tv","series","episode","blu-ray","dvd"],
-                "tools_auto": ["tool","wrench","drill","screwdriver","car","auto","tire","oil"],
-                "baby": ["baby","diaper","bottle","stroller","infant","toddler"],
-                "office": ["office","paper","pen","printer","stapler","desk","chair"],
-                "video_games": ["game","console","controller","xbox","playstation","nintendo","pc"]
+                "books": [
+                    "book",
+                    "story",
+                    "novel",
+                    "author",
+                    "read",
+                    "chapter",
+                    "plot",
+                    "literature",
+                ],
+                "clothing": [
+                    "shirt",
+                    "jeans",
+                    "dress",
+                    "fit",
+                    "size",
+                    "fabric",
+                    "material",
+                    "wear",
+                ],
+                "beauty": [
+                    "skin",
+                    "makeup",
+                    "cream",
+                    "lotion",
+                    "hair",
+                    "fragrance",
+                    "smell",
+                    "shade",
+                ],
+                "home_kitchen": [
+                    "kitchen",
+                    "cook",
+                    "knife",
+                    "pan",
+                    "pot",
+                    "coffee",
+                    "vacuum",
+                    "clean",
+                ],
+                "sports_outdoors": [
+                    "sport",
+                    "run",
+                    "hike",
+                    "bike",
+                    "gym",
+                    "camp",
+                    "outdoor",
+                    "ball",
+                ],
+                "toys_games": [
+                    "toy",
+                    "game",
+                    "play",
+                    "kid",
+                    "puzzle",
+                    "lego",
+                    "board",
+                    "controller",
+                ],
+                "grocery_food": [
+                    "food",
+                    "snack",
+                    "taste",
+                    "flavor",
+                    "chocolate",
+                    "coffee",
+                    "tea",
+                ],
+                "health": [
+                    "vitamin",
+                    "supplement",
+                    "pill",
+                    "allergy",
+                    "medical",
+                    "health",
+                    "symptom",
+                ],
+                "pet": [
+                    "dog",
+                    "cat",
+                    "pet",
+                    "litter",
+                    "treat",
+                    "leash",
+                    "kennel",
+                    "aquarium",
+                ],
+                "music": [
+                    "music",
+                    "song",
+                    "album",
+                    "sound",
+                    "speaker",
+                    "headphone",
+                    "audio",
+                ],
+                "movies_tv": [
+                    "movie",
+                    "film",
+                    "tv",
+                    "series",
+                    "episode",
+                    "blu-ray",
+                    "dvd",
+                ],
+                "tools_auto": [
+                    "tool",
+                    "wrench",
+                    "drill",
+                    "screwdriver",
+                    "car",
+                    "auto",
+                    "tire",
+                    "oil",
+                ],
+                "baby": ["baby", "diaper", "bottle", "stroller", "infant", "toddler"],
+                "office": [
+                    "office",
+                    "paper",
+                    "pen",
+                    "printer",
+                    "stapler",
+                    "desk",
+                    "chair",
+                ],
+                "video_games": [
+                    "game",
+                    "console",
+                    "controller",
+                    "xbox",
+                    "playstation",
+                    "nintendo",
+                    "pc",
+                ],
             }
 
         # stemmer để chuẩn hoá
@@ -253,9 +393,13 @@ class SKLearnLDATopicModeler:
             return {stemmer.stem(w.lower()) for w in words}
 
         # stem hoá keyword bank
-        stemmed_bank = {label: _stem_set(words) for label, words in keywords_bank.items()}
+        stemmed_bank = {
+            label: _stem_set(words) for label, words in keywords_bank.items()
+        }
 
-        topics = self.get_top_words_per_topic(top_n=top_n)  # [(word, weight), ...] per topic
+        topics = self.get_top_words_per_topic(
+            top_n=top_n
+        )  # [(word, weight), ...] per topic
         results = []
 
         for t_idx, topic_words in enumerate(topics):
@@ -275,7 +419,9 @@ class SKLearnLDATopicModeler:
                     if w in kw_stemmed:
                         weight = (top_n - rank) / top_n  # 1.0 for rank 0, decreasing
                         score += weight
-                        matches.append(words_ranked[rank])  # lưu từ gốc (chưa stem) để dễ đọc
+                        matches.append(
+                            words_ranked[rank]
+                        )  # lưu từ gốc (chưa stem) để dễ đọc
                 if score > best_score:
                     best_score = score
                     best_label = label
@@ -284,21 +430,25 @@ class SKLearnLDATopicModeler:
             if best_label is None or best_score <= 0.0:
                 # fallback: ghép top-k words
                 label = " / ".join(words_ranked[:fallback_top_k])
-                results.append({
-                    "topic_index": t_idx,
-                    "label": label,
-                    "score": 0.0,
-                    "top_words": words_ranked,
-                    "matched_keywords": []
-                })
+                results.append(
+                    {
+                        "topic_index": t_idx,
+                        "label": label,
+                        "score": 0.0,
+                        "top_words": words_ranked,
+                        "matched_keywords": [],
+                    }
+                )
             else:
-                results.append({
-                    "topic_index": t_idx,
-                    "label": best_label,
-                    "score": float(best_score),
-                    "top_words": words_ranked,
-                    "matched_keywords": best_matches
-                })
+                results.append(
+                    {
+                        "topic_index": t_idx,
+                        "label": best_label,
+                        "score": float(best_score),
+                        "top_words": words_ranked,
+                        "matched_keywords": best_matches,
+                    }
+                )
 
         return results
 
@@ -316,11 +466,12 @@ class SKLearnLDATopicModeler:
             t = item["topic_index"]
             lbl = item["label"]
             sc = item["score"]
-            matches = ", ".join(item["matched_keywords"]) if item["matched_keywords"] else "-"
+            matches = (
+                ", ".join(item["matched_keywords"]) if item["matched_keywords"] else "-"
+            )
             topw = ", ".join(item["top_words"][:10])
             print(f"Topic {t:02d}: {lbl:20s} | score={sc:.3f} | matches=[{matches}]")
             print(f"  top-words: {topw}")
-
 
     def save(self, model_path: str, vocab_path: Optional[str] = None) -> None:
         """
