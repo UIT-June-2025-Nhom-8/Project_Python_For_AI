@@ -107,25 +107,19 @@ class ModelTrainer:
                     training_params = model_config.get('training_params', {})
                     
                     # Combine all params for model initialization
-                    all_params = {}
-                    all_params.update(model_params)
-                    
-                    # Add TF-IDF max_features and training test_size
-                    if 'max_features' in tfidf_params:
-                        all_params['max_features'] = tfidf_params['max_features']
-                    if 'test_size' in training_params:
-                        all_params['test_size'] = training_params['test_size']
-                    
-                    print(f"Initializing model with: {all_params}")
-                    
+                   
                     # Create model with all parameters
                     model_class = self.available_models[model_name]
-                    model = model_class(**all_params)
+                    model = model_class()
                     
                     # Update TF-IDF parameters
                     if tfidf_params:
                         model.update_tfidf_params(tfidf_params)
                         print(f"TF-IDF parameters updated")
+
+                    if model_params:
+                        model.update_model_params(model_params)
+                        print(f"Model parameters updated")
                     
                     # Train model with separate train and test sets
                     result = model.train_and_evaluate(

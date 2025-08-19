@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import hashlib
 import json
 import time
 from sklearn.ensemble import RandomForestClassifier
@@ -17,40 +16,19 @@ class RandomForestAnalyzer:
     Đơn giản hóa RandomForest cho phân tích cảm xúc
     """
     
-    def __init__(self, n_estimators=150, max_depth=25, min_samples_split=5,
-                 min_samples_leaf=2, max_features=25000, test_size=0.2, random_state=42, **kwargs):
-        """
-        Khởi tạo với tham số mặc định được tối ưu cho sentiment analysis
-        
-        Args:
-            n_estimators (int): Số lượng trees (tăng để có performance tốt hơn)
-            max_depth (int): Độ sâu tối đa của trees (giới hạn để tránh overfitting)
-            min_samples_split (int): Minimum samples to split node (tăng để giảm overfitting)
-            min_samples_leaf (int): Minimum samples per leaf (thêm để giảm overfitting)
-            max_features (int): Maximum features for TF-IDF (tăng cho text data)
-            test_size (float): Tỷ lệ data test
-            random_state (int): Random state
-            **kwargs: Additional parameters từ JSON config (sẽ được ignore nếu không supported)
-        """
-        self.params = {
-            'n_estimators': n_estimators,
-            'max_depth': max_depth,
-            'min_samples_split': min_samples_split,
-            'min_samples_leaf': min_samples_leaf,
-            'max_features': max_features,
-            'test_size': test_size,
-            'random_state': random_state
+    def __init__(self):
+        self.model_params = {
+            'n_estimators': 150,
+            'max_depth': 25,
+            'min_samples_split': 5,
+            'min_samples_leaf': 2,
+            'max_features': 'sqrt',  # Model max_features: số features xem xét cho mỗi split
+            'random_state': 42
         }
         
-        # Thêm các params từ kwargs nếu supported
-        supported_params = ['class_weight', 'bootstrap', 'n_jobs']
-        for param in supported_params:
-            if param in kwargs:
-                self.params[param] = kwargs[param]
-        
-        # TF-IDF parameters (có thể override từ JSON config)
+       
         self.tfidf_params = {
-            'max_features': max_features,
+            'max_features': 5000,  # TF-IDF max_features: số từ trong vocabulary
             'stop_words': None,
             'ngram_range': (1, 3),
             'min_df': 2,
@@ -64,8 +42,8 @@ class RandomForestAnalyzer:
         self.tfidf_vectorizer = None
         self.label_encoder = LabelEncoder()
         self.results = {}
-        self.cache_dir = "output/models/cache/"
-        os.makedirs(self.cache_dir, exist_ok=True)
+        self.models_dir = "output/models/"
+        os.makedirs(self.models_dir, exist_ok=True)
     
     def update_tfidf_params(self, tfidf_config):
         """
@@ -78,89 +56,51 @@ class RandomForestAnalyzer:
             # Update tất cả TF-IDF parameters
             self.tfidf_params.update(tfidf_config)
             
-            # Update max_features trong self.params để maintain consistency
-            if 'max_features' in tfidf_config:
-                self.params['max_features'] = tfidf_config['max_features']
-            
             # Convert ngram_range from list to tuple if needed
             if 'ngram_range' in self.tfidf_params and isinstance(self.tfidf_params['ngram_range'], list):
                 self.tfidf_params['ngram_range'] = tuple(self.tfidf_params['ngram_range'])
                 
             print(f"TF-IDF params updated: {self.tfidf_params}")
     
-    def _generate_cache_key(self, df):
-        """Generate cache key from data and params (fixed for list handling)"""
-        # Create hashable representation of the data
-        df_for_hash = df[['label']].copy()
-        
-        # Convert normalized_input lists to strings for hashing
-        if 'normalized_input' in df.columns:
-            df_for_hash['normalized_input_str'] = df['normalized_input'].apply(
-                lambda x: ' '.join(x) if isinstance(x, list) else str(x)
-            )
-        
-        # Hash the data
-        try:
-            data_hash = hashlib.md5(
-                pd.util.hash_pandas_object(df_for_hash).values
-            ).hexdigest()[:10]
-        except Exception as e:
-            # Fallback: hash string representation
-            data_str = str(df_for_hash.values)
-            data_hash = hashlib.md5(data_str.encode()).hexdigest()[:10]
-        
-        # Hash the parameters
-        params_str = json.dumps(self.params, sort_keys=True)
-        params_hash = hashlib.md5(params_str.encode()).hexdigest()[:10]
-        
-        return f"{self.__class__.__name__.lower()}_{data_hash}_{params_hash}"
-    
-    def _get_cache_path(self, cache_key):
-        """Lấy đường dẫn cache file"""
-        return os.path.join(self.cache_dir, f"{cache_key}.pkl")
-    
-    def _load_cached_model(self, cache_key):
-        """Load model từ cache nếu có"""
-        cache_path = self._get_cache_path(cache_key)
-        if os.path.exists(cache_path):
-            try:
-                with open(cache_path, 'rb') as f:
-                    cached_data = pickle.load(f)
+    def update_model_params(self, model_config):
+        if model_config:
+            # Update tất cả model parameters
+            self.model_params.update(model_config)
                 
-                self.model = cached_data['model']
-                self.tfidf_vectorizer = cached_data['tfidf_vectorizer']
-                self.label_encoder = cached_data['label_encoder']
-                self.results = cached_data['results']
-                
-                print(f"✓ Loaded cached model: {cache_key}")
-                return True
-            except Exception as e:
-                print(f"Cache load failed: {e}")
-                return False
-        return False
-    
-    def _save_model_to_cache(self, cache_key):
-        """Lưu model vào cache"""
-        cache_path = self._get_cache_path(cache_key)
+            print(f"Model params updated: {self.model_params}")
+
+    def _save_model(self, model_name_suffix=""):
+        """Save trained model to file"""
+        if self.model is None or self.tfidf_vectorizer is None:
+            print("❌ No trained model to save")
+            return
+            
         try:
-            cached_data = {
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            filename = f"random_forest_{timestamp}{model_name_suffix}.pkl"
+            filepath = os.path.join(self.models_dir, filename)
+            
+            model_data = {
                 'model': self.model,
                 'tfidf_vectorizer': self.tfidf_vectorizer,
                 'label_encoder': self.label_encoder,
                 'results': self.results,
-                'params': self.params
+                'model_params': self.model_params,
+                'tfidf_params': self.tfidf_params,
+                'timestamp': timestamp
             }
             
-            with open(cache_path, 'wb') as f:
-                pickle.dump(cached_data, f)
+            with open(filepath, 'wb') as f:
+                pickle.dump(model_data, f)
             
-            print(f"✓ Model cached: {cache_key}")
+            print(f"✅ Model saved to: {filepath}")
+            
         except Exception as e:
-            print(f"Cache save failed: {e}")
+            print(f"❌ Failed to save model: {e}")
 
     def train_and_evaluate(self, train_df, test_df, text_column='normalized_input', target_column='label'):
         """
-        Main method: train model hoặc load từ cache
+        Main method: train model
         
         Args:
             train_df (pd.DataFrame): Training data đã preprocessed
@@ -173,14 +113,7 @@ class RandomForestAnalyzer:
         """
         print("\n=== RANDOM FOREST CLASSIFIER ===")
         
-        # Generate cache key from training data only
-        cache_key = self._generate_cache_key(train_df)
-        
-        # Thử load từ cache
-        if self._load_cached_model(cache_key):
-            return self.results
-        
-        # Nếu không có cache, train từ đầu
+        # Train new model
         print("Training new model...")
         start_time = time.time()
         
@@ -194,8 +127,8 @@ class RandomForestAnalyzer:
         training_time = time.time() - start_time
         self.results['training_time'] = round(training_time, 2)
         
-        # Lưu vào cache
-        self._save_model_to_cache(cache_key)
+        # Save model
+        self._save_model()
         
         return self.results
     
@@ -235,19 +168,16 @@ class RandomForestAnalyzer:
     def _initialize_model(self):
         """Khởi tạo model với params"""
         model_params = {
-            'n_estimators': self.params['n_estimators'],
-            'max_depth': self.params['max_depth'],
-            'min_samples_split': self.params['min_samples_split'],
-            'min_samples_leaf': self.params['min_samples_leaf'],
-            'random_state': self.params['random_state'],
-            'n_jobs': self.params.get('n_jobs', -1),  # Default -1 nếu không có
-            'bootstrap': self.params.get('bootstrap', True),  # Default True
-            'max_features': 'sqrt'  # Use sqrt cho RandomForest (not từ TF-IDF max_features)
+            'n_estimators': self.model_params['n_estimators'],
+            'max_depth': self.model_params['max_depth'],
+            'min_samples_split': self.model_params['min_samples_split'],
+            'min_samples_leaf': self.model_params['min_samples_leaf'],
+            'random_state': self.model_params['random_state'],
+            'n_jobs': self.model_params.get('n_jobs', -1),  # Default -1 nếu không có
+            'bootstrap': self.model_params.get('bootstrap', True),  # Default True
+            'max_features': self.model_params.get('max_features', 'sqrt'),  # Use sqrt cho RandomForest (not từ TF-IDF max_features)
+            'class_weight': self.model_params.get('class_weight', 'balanced')  # Default 'balanced'
         }
-        
-        # Thêm class_weight nếu có
-        if 'class_weight' in self.params:
-            model_params['class_weight'] = self.params['class_weight']
             
         self.model = RandomForestClassifier(**model_params)
     
@@ -276,7 +206,8 @@ class RandomForestAnalyzer:
         # Lưu kết quả
         self.results = {
             'model_name': 'RandomForestClassifier',
-            'params': self.params,
+            'model_params': self.model_params,
+            'tfidf_params': self.tfidf_params,
             'train_accuracy': round(train_acc, 4),
             'test_accuracy': round(test_acc, 4),
             'overfitting_score': round(train_acc - test_acc, 4),  # Thêm overfitting score

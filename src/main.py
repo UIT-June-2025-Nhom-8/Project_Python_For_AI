@@ -12,10 +12,6 @@ def main():
     CONFIG = {
         "train_size": config.get("dataset_config", {}).get("train_size", 1000),
         "test_size": config.get("dataset_config", {}).get("test_size", 100),
-        "tfidf_max_features":  5000,
-        "tfidf_min_df": 2,
-        "tfidf_max_df": 0.8,
-        "ngram_range": (1, 2),
     }
 
     print("=== AMAZON REVIEWS DATA PROCESSING PIPELINE ===")

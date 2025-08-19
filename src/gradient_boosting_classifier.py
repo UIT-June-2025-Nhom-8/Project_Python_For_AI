@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import hashlib
 import json
 import time
 from sklearn.ensemble import GradientBoostingClassifier
@@ -11,44 +10,22 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 import pickle
 import os
 
-
 class GradientBoostingAnalyzer:
     """
     Đơn giản hóa GradientBoostingClassifier cho phân tích cảm xúc
     """
     
-    def __init__(self, n_estimators=200, learning_rate=0.15, max_depth=4, 
-                 max_features=25000, test_size=0.2, random_state=42, **kwargs):
-        """
-        Khởi tạo với tham số mặc định được tối ưu cho sentiment analysis
-        
-        Args:
-            n_estimators (int): Số lượng boosting stages (tăng để có performance tốt hơn)
-            learning_rate (float): Learning rate (tăng để train nhanh hơn và tránh underfitting)
-            max_depth (int): Maximum depth of trees (tăng cho model phức tạp hơn)
-            max_features (int): Maximum features for TF-IDF (tăng cho text data)
-            test_size (float): Tỷ lệ data test
-            random_state (int): Random state
-            **kwargs: Additional parameters từ JSON config (sẽ được ignore nếu không supported)
-        """
-        self.params = {
-            'n_estimators': n_estimators,
-            'learning_rate': learning_rate,
-            'max_depth': max_depth,
-            'max_features': max_features,
-            'test_size': test_size,
-            'random_state': random_state
+    def __init__(self):
+        self.model_params = {
+            'n_estimators': 200,
+            'learning_rate': 0.15,
+            'max_depth': 4,
+            'max_features': 'sqrt',  # Model max_features: số features xem xét cho mỗi split
+            'random_state': 42
         }
         
-        # Thêm các params từ kwargs nếu supported
-        supported_params = ['subsample', 'validation_fraction', 'n_iter_no_change', 'tol']
-        for param in supported_params:
-            if param in kwargs:
-                self.params[param] = kwargs[param]
-        
-        # TF-IDF parameters (có thể override từ JSON config)
         self.tfidf_params = {
-            'max_features': max_features,
+            'max_features': 5000,  # TF-IDF max_features: số từ trong vocabulary
             'stop_words': None,
             'ngram_range': (1, 3),
             'min_df': 2,
@@ -62,104 +39,59 @@ class GradientBoostingAnalyzer:
         self.tfidf_vectorizer = None
         self.label_encoder = LabelEncoder()
         self.results = {}
-        self.cache_dir = "output/models/cache/"
-        os.makedirs(self.cache_dir, exist_ok=True)
+        self.models_dir = "output/models/"
+        os.makedirs(self.models_dir, exist_ok=True)
     
     def update_tfidf_params(self, tfidf_config):
-        """
-        Update TF-IDF parameters từ JSON config
-        
-        Args:
-            tfidf_config (dict): TF-IDF parameters từ JSON
-        """
         if tfidf_config:
             # Update tất cả TF-IDF parameters
             self.tfidf_params.update(tfidf_config)
-            
-            # Update max_features trong self.params để maintain consistency
-            if 'max_features' in tfidf_config:
-                self.params['max_features'] = tfidf_config['max_features']
             
             # Convert ngram_range from list to tuple if needed
             if 'ngram_range' in self.tfidf_params and isinstance(self.tfidf_params['ngram_range'], list):
                 self.tfidf_params['ngram_range'] = tuple(self.tfidf_params['ngram_range'])
                 
             print(f"TF-IDF params updated: {self.tfidf_params}")
-    def _generate_cache_key(self, df):
-        """Generate cache key from data and params (fixed for list handling)"""
-        # Create hashable representation of the data
-        df_for_hash = df[['label']].copy()
-        
-        # Convert normalized_input lists to strings for hashing
-        if 'normalized_input' in df.columns:
-            df_for_hash['normalized_input_str'] = df['normalized_input'].apply(
-                lambda x: ' '.join(x) if isinstance(x, list) else str(x)
-            )
-        
-        # Hash the data
-        try:
-            data_hash = hashlib.md5(
-                pd.util.hash_pandas_object(df_for_hash).values
-            ).hexdigest()[:10]
-        except Exception as e:
-            # Fallback: hash string representation
-            data_str = str(df_for_hash.values)
-            data_hash = hashlib.md5(data_str.encode()).hexdigest()[:10]
-        
-        # Hash the parameters
-        params_str = json.dumps(self.params, sort_keys=True)
-        params_hash = hashlib.md5(params_str.encode()).hexdigest()[:10]
-        
-        return f"{self.__class__.__name__.lower()}_{data_hash}_{params_hash}"
-    
-    def _get_cache_path(self, cache_key):
-        """Lấy đường dẫn cache file"""
-        return os.path.join(self.cache_dir, f"{cache_key}.pkl")
-    
-    def _load_cached_model(self, cache_key):
-        """Load model from cache if exists"""
-        cache_path = self._get_cache_path(cache_key)
-        if os.path.exists(cache_path):
-            try:
-                with open(cache_path, 'rb') as f:
-                    cached_data = pickle.load(f)
+
+    def update_model_params(self, model_config):
+        if model_config:
+            # Update tất cả model parameters
+            self.model_params.update(model_config)
                 
-                self.model = cached_data['model']
-                self.tfidf_vectorizer = cached_data['tfidf_vectorizer']
-                self.label_encoder = cached_data['label_encoder']
-                self.results = cached_data['results']
-                
-                print(f"✅ Loaded cached model: {cache_key}")
-                return True
-            except Exception as e:
-                print(f"❌ Cache load failed: {e}")
-                return False
-        
-        return False
+            print(f"Model params updated: {self.model_params}")
     
-    def _save_model_to_cache(self, cache_key):
-        """Save model to cache"""
-        cache_path = self._get_cache_path(cache_key)
+    def _save_model(self, model_name_suffix=""):
+        """Save trained model to file"""
+        if self.model is None or self.tfidf_vectorizer is None:
+            print("❌ No trained model to save")
+            return
+            
         try:
-            cached_data = {
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            filename = f"gradient_boosting_{timestamp}{model_name_suffix}.pkl"
+            filepath = os.path.join(self.models_dir, filename)
+            
+            model_data = {
                 'model': self.model,
                 'tfidf_vectorizer': self.tfidf_vectorizer,
                 'label_encoder': self.label_encoder,
                 'results': self.results,
-                'params': self.params
+                'model_params': self.model_params,
+                'tfidf_params': self.tfidf_params,
+                'timestamp': timestamp
             }
             
-            with open(cache_path, 'wb') as f:
-                pickle.dump(cached_data, f)
+            with open(filepath, 'wb') as f:
+                pickle.dump(model_data, f)
             
-            print(f"✅ Model cached to: {cache_path}")
+            print(f"✅ Model saved to: {filepath}")
             
         except Exception as e:
-            print(f"❌ Failed to cache model: {e}")
+            print(f"❌ Failed to save model: {e}")
     
     def train_and_evaluate(self, train_df, test_df, text_column='normalized_input', target_column='label'):
         """
-        Main method: train model hoặc load từ cache
+        Main method: train model
         
         Args:
             train_df (pd.DataFrame): Training data đã preprocessed
@@ -172,14 +104,7 @@ class GradientBoostingAnalyzer:
         """
         print("\n=== GRADIENT BOOSTING CLASSIFIER ===")
         
-        # Generate cache key from training data only
-        cache_key = self._generate_cache_key(train_df)
-        
-        # Thử load từ cache
-        if self._load_cached_model(cache_key):
-            return self.results
-        
-        # Nếu không có cache, train từ đầu
+        # Train new model
         print("Training new model...")
         start_time = time.time()
         
@@ -193,9 +118,9 @@ class GradientBoostingAnalyzer:
         training_time = time.time() - start_time
         self.results['training_time'] = round(training_time, 2)
         
-        # Print results và lưu vào cache
+        # Print results and save model
         self._print_results()
-        self._save_model_to_cache(cache_key)
+        self._save_model()
         
         return self.results
     
@@ -233,23 +158,18 @@ class GradientBoostingAnalyzer:
         print(f"Label classes: {self.label_encoder.classes_}")
     
     def _initialize_model(self):
-        """Khởi tạo model với params"""
+        """Khởi tạo model với model_params"""
         model_params = {
-            'n_estimators': self.params['n_estimators'],
-            'learning_rate': self.params['learning_rate'],
-            'max_depth': self.params['max_depth'],
-            'random_state': self.params['random_state'],
-            'subsample': self.params.get('subsample', 0.8),  # Default 0.8
-            'validation_fraction': self.params.get('validation_fraction', 0.1),  # Default 0.1
-            'n_iter_no_change': self.params.get('n_iter_no_change', 10),  # Default 10
-            'tol': self.params.get('tol', 1e-4)  # Default 1e-4
+            'n_estimators': self.model_params['n_estimators'],
+            'learning_rate': self.model_params['learning_rate'],
+            'max_depth': self.model_params['max_depth'],
+            'random_state': self.model_params['random_state'],
+            'subsample': self.model_params.get('subsample', 0.8), 
+            'validation_fraction': self.model_params.get('validation_fraction', 0.1),  
+            'n_iter_no_change': self.model_params.get('n_iter_no_change', 10), 
+            'tol': self.model_params.get('tol', 1e-4),  # Default 1e-4
+            'max_features': self.model_params.get('max_features', 'sqrt'), 
         }
-        
-        # Thêm max_features cho sklearn model (khác với TF-IDF max_features)
-        if 'max_features' in self.params and self.params['max_features'] in ['sqrt', 'log2', None]:
-            model_params['max_features'] = self.params['max_features']
-        else:
-            model_params['max_features'] = 'sqrt'  # Default cho GradientBoostingClassifier
             
         self.model = GradientBoostingClassifier(**model_params)
     
@@ -278,7 +198,8 @@ class GradientBoostingAnalyzer:
         # Lưu kết quả
         self.results = {
             'model_name': 'GradientBoostingClassifier',
-            'params': self.params,
+            'model_params': self.model_params,
+            'tfidf_params': self.tfidf_params,
             'train_accuracy': round(train_acc, 4),
             'test_accuracy': round(test_acc, 4),
             'overfitting_score': round(train_acc - test_acc, 4),
