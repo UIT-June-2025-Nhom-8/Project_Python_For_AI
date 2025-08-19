@@ -24,24 +24,6 @@ class TextAnalyzer:
         self.total_sentences = 0
         self.analysis_results = {}
 
-    def analyze_word_count(self, sentence):
-        """
-        Analyze word count for a single sentence
-
-        Args:
-            sentence (str): Input sentence to analyze
-
-        Returns:
-            dict: Word count dictionary for the sentence
-        """
-        word_count = {}
-        for word in sentence.split():
-            if word in word_count:
-                word_count[word] += 1
-            else:
-                word_count[word] = 1
-        return word_count
-
     def build_corpus_word_count(self, dataset, text_column="input"):
         """
         Build word count dictionary for entire corpus
@@ -164,6 +146,294 @@ class TextAnalyzer:
         except Exception as e:
             print(f"   Error generating word cloud: {e}")
             return None
+
+    def generate_sentiment_wordclouds(
+        self,
+        dataset,
+        text_column="input",
+        label_column="label",
+        figsize=(15, 8),
+        remove_numbers=True,
+        save_paths=None,
+    ):
+        """
+        Generate separate word clouds for different sentiment labels
+
+        Args:
+            dataset (pd.DataFrame): Dataset containing text data and labels
+            text_column (str): Column name containing text data
+            label_column (str): Column name containing sentiment labels
+            figsize (tuple): Figure size for the combined plot
+            remove_numbers (bool): Whether to remove numbers from text
+            save_paths (dict): Dictionary with paths to save word clouds {1: "negative_path", 2: "positive_path"}
+
+        Returns:
+            dict: Dictionary containing word cloud objects for each sentiment
+        """
+        print("Generating sentiment-specific word clouds...")
+
+        # Check if label column exists
+        if label_column not in dataset.columns:
+            print(f"   Warning: Label column '{label_column}' not found in dataset")
+            return None
+
+        # Get unique sentiment labels
+        unique_labels = sorted(dataset[label_column].unique())
+        print(f"   Found sentiment labels: {unique_labels}")
+
+        # Define sentiment mapping
+        sentiment_mapping = {1: "Negative", 2: "Positive"}
+        colormap_mapping = {1: "Reds", 2: "Greens"}
+
+        wordclouds = {}
+
+        # Create subplot figure
+        fig, axes = plt.subplots(1, len(unique_labels), figsize=figsize)
+        if len(unique_labels) == 1:
+            axes = [axes]
+
+        for idx, label in enumerate(unique_labels):
+            # Filter data by sentiment label
+            sentiment_data = dataset[dataset[label_column] == label]
+            print(
+                f"   Processing {sentiment_mapping.get(label, f'Label-{label}')} sentiment: {len(sentiment_data):,} samples"
+            )
+
+            # Join sentences for this sentiment
+            joined_sentences = ""
+            for sentence in sentiment_data[text_column]:
+                if isinstance(sentence, str):
+                    if remove_numbers:
+                        cleaned_sentence = re.sub(r"\d+", "", sentence)
+                    else:
+                        cleaned_sentence = sentence
+                    joined_sentences += " " + cleaned_sentence
+
+            if not joined_sentences.strip():
+                print(
+                    f"   Warning: No text data available for {sentiment_mapping.get(label, f'Label-{label}')} sentiment"
+                )
+                continue
+
+            try:
+                # Generate word cloud for this sentiment
+                wordcloud = WordCloud(
+                    width=800,
+                    height=400,
+                    background_color="white",
+                    max_words=100,
+                    colormap=colormap_mapping.get(label, "viridis"),
+                    stopwords=DEFAULT_WORDCLOUD_STOPWORDS,
+                    relative_scaling=True,
+                    min_font_size=10,
+                ).generate(joined_sentences)
+
+                wordclouds[label] = wordcloud
+
+                # Plot word cloud
+                axes[idx].imshow(wordcloud, interpolation="bilinear")
+                axes[idx].axis("off")
+                axes[idx].set_title(
+                    f"{sentiment_mapping.get(label, f'Label-{label}')} Sentiment\n({len(sentiment_data):,} samples)",
+                    fontsize=14,
+                    fontweight="bold",
+                )
+
+                # Save individual word cloud if path provided
+                if save_paths and label in save_paths:
+                    plt.figure(figsize=(10, 6))
+                    plt.imshow(wordcloud, interpolation="bilinear")
+                    plt.axis("off")
+                    plt.title(
+                        f"{sentiment_mapping.get(label, f'Label-{label}')} Sentiment Word Cloud",
+                        fontsize=16,
+                        fontweight="bold",
+                    )
+                    plt.savefig(save_paths[label], bbox_inches="tight", dpi=300)
+                    plt.close()
+                    print(
+                        f"   {sentiment_mapping.get(label, f'Label-{label}')} word cloud saved to: {save_paths[label]}"
+                    )
+
+            except Exception as e:
+                print(
+                    f"   Error generating word cloud for {sentiment_mapping.get(label, f'Label-{label}')} sentiment: {e}"
+                )
+                continue
+
+        # Adjust layout and show combined plot
+        plt.tight_layout()
+        plt.suptitle(
+            "Sentiment-Specific Word Clouds", fontsize=16, fontweight="bold", y=1.02
+        )
+        plt.show()
+
+        print("   Sentiment word clouds generated successfully")
+        return wordclouds
+
+    def generate_dataset_comparison_wordclouds(
+        self,
+        train_dataset,
+        test_dataset,
+        text_column="input",
+        label_column="label",
+        figsize=(20, 12),
+        remove_numbers=True,
+        save_paths=None,
+    ):
+        """
+        Generate word clouds comparing train/test datasets by sentiment
+
+        Args:
+            train_dataset (pd.DataFrame): Training dataset
+            test_dataset (pd.DataFrame): Test dataset
+            text_column (str): Column name containing text data
+            label_column (str): Column name containing sentiment labels
+            figsize (tuple): Figure size for the combined plot
+            remove_numbers (bool): Whether to remove numbers from text
+            save_paths (dict): Dictionary with paths to save word clouds
+                              {"train_negative": "path", "train_positive": "path",
+                              "test_negative": "path", "test_positive": "path"}
+
+        Returns:
+            dict: Dictionary containing all word cloud objects
+        """
+        print("Generating train/test sentiment comparison word clouds...")
+
+        # Check if label column exists
+        for dataset_name, dataset in [("train", train_dataset), ("test", test_dataset)]:
+            if label_column not in dataset.columns:
+                print(
+                    f"   Warning: Label column '{label_column}' not found in {dataset_name} dataset"
+                )
+                return None
+
+        # Get unique sentiment labels from both datasets
+        all_labels = sorted(
+            set(train_dataset[label_column].unique())
+            | set(test_dataset[label_column].unique())
+        )
+        print(f"   Found sentiment labels: {all_labels}")
+
+        # Define sentiment mapping
+        sentiment_mapping = {1: "Negative", 2: "Positive"}
+        colormap_mapping = {1: "Reds", 2: "Greens"}
+
+        # Create subplot figure (2 rows: train/test, N columns: sentiments)
+        fig, axes = plt.subplots(2, len(all_labels), figsize=figsize)
+        if len(all_labels) == 1:
+            axes = axes.reshape(-1, 1)
+
+        all_wordclouds = {}
+
+        datasets = [("Train", train_dataset), ("Test", test_dataset)]
+
+        for row_idx, (dataset_name, dataset) in enumerate(datasets):
+            print(f"\n   Processing {dataset_name} Dataset:")
+
+            for col_idx, label in enumerate(all_labels):
+                # Filter data by sentiment label
+                sentiment_data = dataset[dataset[label_column] == label]
+                sentiment_name = sentiment_mapping.get(label, f"Label-{label}")
+
+                print(
+                    f"     {sentiment_name} sentiment: {len(sentiment_data):,} samples"
+                )
+
+                # Join sentences for this sentiment
+                joined_sentences = ""
+                for sentence in sentiment_data[text_column]:
+                    if isinstance(sentence, str):
+                        if remove_numbers:
+                            cleaned_sentence = re.sub(r"\d+", "", sentence)
+                        else:
+                            cleaned_sentence = sentence
+                        joined_sentences += " " + cleaned_sentence
+
+                if not joined_sentences.strip():
+                    print(
+                        f"     Warning: No text data available for {sentiment_name} sentiment in {dataset_name}"
+                    )
+                    axes[row_idx, col_idx].text(
+                        0.5,
+                        0.5,
+                        "No Data Available",
+                        ha="center",
+                        va="center",
+                        transform=axes[row_idx, col_idx].transAxes,
+                    )
+                    axes[row_idx, col_idx].axis("off")
+                    continue
+
+                try:
+                    # Generate word cloud for this sentiment and dataset
+                    wordcloud = WordCloud(
+                        width=800,
+                        height=400,
+                        background_color="white",
+                        max_words=100,
+                        colormap=colormap_mapping.get(label, "viridis"),
+                        stopwords=DEFAULT_WORDCLOUD_STOPWORDS,
+                        relative_scaling=True,
+                        min_font_size=10,
+                    ).generate(joined_sentences)
+
+                    # Store word cloud
+                    key = f"{dataset_name.lower()}_{sentiment_name.lower()}"
+                    all_wordclouds[key] = wordcloud
+
+                    # Plot word cloud
+                    axes[row_idx, col_idx].imshow(wordcloud, interpolation="bilinear")
+                    axes[row_idx, col_idx].axis("off")
+                    axes[row_idx, col_idx].set_title(
+                        f"{dataset_name} - {sentiment_name}\n({len(sentiment_data):,} samples)",
+                        fontsize=12,
+                        fontweight="bold",
+                    )
+
+                    # Save individual word cloud if path provided
+                    if save_paths and key in save_paths:
+                        plt.figure(figsize=(10, 6))
+                        plt.imshow(wordcloud, interpolation="bilinear")
+                        plt.axis("off")
+                        plt.title(
+                            f"{dataset_name} Dataset - {sentiment_name} Sentiment",
+                            fontsize=16,
+                            fontweight="bold",
+                        )
+                        plt.savefig(save_paths[key], bbox_inches="tight", dpi=300)
+                        plt.close()
+                        print(
+                            f"     {dataset_name} {sentiment_name} word cloud saved to: {save_paths[key]}"
+                        )
+
+                except Exception as e:
+                    print(
+                        f"     Error generating word cloud for {sentiment_name} sentiment in {dataset_name}: {e}"
+                    )
+                    axes[row_idx, col_idx].text(
+                        0.5,
+                        0.5,
+                        "Generation Error",
+                        ha="center",
+                        va="center",
+                        transform=axes[row_idx, col_idx].transAxes,
+                    )
+                    axes[row_idx, col_idx].axis("off")
+                    continue
+
+        # Adjust layout and show combined plot
+        plt.tight_layout()
+        plt.suptitle(
+            "Train vs Test Dataset - Sentiment Word Clouds Comparison",
+            fontsize=18,
+            fontweight="bold",
+            y=0.98,
+        )
+        plt.show()
+
+        print("\n   Dataset comparison word clouds generated successfully")
+        return all_wordclouds
 
     def calculate_average_word_length(self, dataset, text_column="input"):
         """
