@@ -7,7 +7,8 @@ def main():
     from config_loader import load_json_config
     
     # Load configuration
-    config = load_json_config('./configs/accuracy_optimized_config.json')
+    config = load_json_config('./configs/accuracy_optimized_config_2.json')
+
 
     CONFIG = {
         "train_size": config.get("dataset_config", {}).get("train_size", 1000),
@@ -85,13 +86,13 @@ def main():
     print("\n" + "=" * 50)
     print(test_df.head(3))
 
-    from text_analyzer import TextAnalyzer
+    # from text_analyzer import TextAnalyzer
 
-    print("\n=== TEXT ANALYSIS BEFORE TF-IDF VECTORIZATION ===")
-    text_analyzer = TextAnalyzer()
+    # print("\n=== TEXT ANALYSIS BEFORE TF-IDF VECTORIZATION ===")
+    # text_analyzer = TextAnalyzer()
 
-    print("\n1. TRAINING DATA ANALYSIS")
-    train_analysis = text_analyzer.analyze_text_statistics(train_df, "input")
+    # print("\n1. TRAINING DATA ANALYSIS")
+    # train_analysis = text_analyzer.analyze_text_statistics(train_df, "input")
 
     print("\n2. WORD CLOUD GENERATION")
     try:
@@ -104,14 +105,14 @@ def main():
     except Exception as e:
         print(f"   Could not generate word cloud: {e}")
 
-    print("\n3. DATASET COMPARISON")
-    comparison_results = text_analyzer.compare_datasets(train_df, test_df, "input")
+    # print("\n3. DATASET COMPARISON")
+    # comparison_results = text_analyzer.compare_datasets(train_df, test_df, "input")
 
-    print("\n4. WORD FREQUENCY ANALYSIS")
-    word_freq_report = text_analyzer.get_word_frequency_report(min_frequency=5)
-    if not word_freq_report.empty:
-        print("\nTop 15 words with frequency >= 5:")
-        print(word_freq_report.head(15).to_string(index=False))
+    # print("\n4. WORD FREQUENCY ANALYSIS")
+    # word_freq_report = text_analyzer.get_word_frequency_report(min_frequency=5)
+    # if not word_freq_report.empty:
+    #     print("\nTop 15 words with frequency >= 5:")
+    #     print(word_freq_report.head(15).to_string(index=False))
 
     from tf_idf_vectorizer import TFIDFVectorizer
 
@@ -176,11 +177,11 @@ def main():
             f"   - Most frequent word: '{word_stats['most_frequent_word'][0]}' ({word_stats['most_frequent_word'][1]:,} times)"
         )
 
-    print(f"\nLabel Distribution:")
-    train_labels = train_df["label"].value_counts()
-    test_labels = test_df["label"].value_counts()
-    print(f"   Train: {dict(train_labels)}")
-    print(f"   Test:  {dict(test_labels)}")
+    # print(f"\nLabel Distribution:")
+    # train_labels = train_df["label"].value_counts()
+    # test_labels = test_df["label"].value_counts()
+    # print(f"   Train: {dict(train_labels)}")
+    # print(f"   Test:  {dict(test_labels)}")
 
     print(f"\nData Ready for training model:")
     print(f"   - X_train_tfidf: {X_train_tfidf.shape}")
@@ -279,29 +280,29 @@ def main():
     # Danh sách n_topics cần thử
     n_topics_list = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 
-    # Tùy chọn: tham số CountVectorizer để cải thiện topic
-    vectorizer_params = {
-        "max_features": 20000,  # tăng vocab cho tập lớn
-        "min_df": 5,  # bỏ từ quá hiếm
-        "max_df": 0.7,  # bỏ từ quá phổ biến
-    }
+    # # Tùy chọn: tham số CountVectorizer để cải thiện topic
+    # vectorizer_params = {
+    #     "max_features": 20000,  # tăng vocab cho tập lớn
+    #     "min_df": 5,  # bỏ từ quá hiếm
+    #     "max_df": 0.7,  # bỏ từ quá phổ biến
+    # }
 
-    # tham số LDA chung
-    base_params = {
-        "max_iter": 20,
-        "learning_method": "online",
-        "random_state": 42,
-        "evaluate_every": -1,
-    }
+    # # tham số LDA chung
+    # base_params = {
+    #     "max_iter": 20,
+    #     "learning_method": "online",
+    #     "random_state": 42,
+    #     "evaluate_every": -1,
+    # }
 
-    print("\n=== LDA GRID SEARCH START ===")
-    lda_grid_df = run_lda_experiments(
-        n_topics_list=n_topics_list,
-        train_tokens=train_df["normalized_input"],
-        test_tokens=test_df["normalized_input"],
-        base_params=base_params,
-        vectorizer_params=vectorizer_params,
-    )
+    # print("\n=== LDA GRID SEARCH START ===")
+    # lda_grid_df = run_lda_experiments(
+    #     n_topics_list=n_topics_list,
+    #     train_tokens=train_df["normalized_input"],
+    #     test_tokens=test_df["normalized_input"],
+    #     base_params=base_params,
+    #     vectorizer_params=vectorizer_params,
+    # )
 
     print("\n=== LDA GRID SEARCH RESULTS (sorted by lowest Test Perplexity) ===")
     cols = [
