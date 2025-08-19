@@ -4,11 +4,15 @@ from lda_utils import run_lda_experiments, plot_coherence_and_perplexity
 def main():
     # from kaggle_data_loader import KaggleDataLoader
     from local_data_loader import LocalDataLoader as KaggleDataLoader
+    from config_loader import load_json_config
+    
+    # Load configuration
+    config = load_json_config('./configs/accuracy_optimized_config.json')
 
     CONFIG = {
-        "train_size": 100000,
-        "test_size": 10000,
-        "tfidf_max_features": 5000,
+        "train_size": config.get("dataset_config", {}).get("train_size", 1000),
+        "test_size": config.get("dataset_config", {}).get("test_size", 100),
+        "tfidf_max_features":  5000,
         "tfidf_min_df": 2,
         "tfidf_max_df": 0.8,
         "ngram_range": (1, 2),
@@ -23,27 +27,32 @@ def main():
 
     from pre_processor import PreProcessor
 
-    preprocessor = PreProcessor()
+    # Initialize preprocessor with sentiment optimization 
+    preprocessor = PreProcessor(use_lemmatization=True)
 
-    print("\n=== TEXT PREPROCESSING ===")
-    print("Processing training data...")
+    print("\n=== TEXT PREPROCESSING (SENTIMENT OPTIMIZED) ===")
+    print("Processing training data with sentiment-aware preprocessing...")
     train_df = preprocessor.clean_data(train_df.copy())
     train_df = preprocessor.remove_duplicates(train_df)
 
     # Create copies of the train_df for gensim LDA processing
     train_df_gensimLDA = train_df.copy()
 
-    # Use efficient pipeline method that combines cleaning, tokenization, stopword removal and normalization
+    # Use sentiment-optimized preprocessing pipeline
     train_df = train_df.assign(
-        normalized_input=train_df["input"].apply(preprocessor.preprocess_text_pipeline)
+        normalized_input=train_df["input"].apply(
+            lambda x: preprocessor.preprocess_for_sentiment(x, preserve_negation=True)
+        )
     )
 
-    print("Processing test data...")
+    print("Processing test data with sentiment-aware preprocessing...")
     test_df = preprocessor.clean_data(test_df.copy())
     test_df = preprocessor.remove_duplicates(test_df)
-    # Use efficient pipeline method that combines cleaning, tokenization, stopword removal and normalization
+    # Use sentiment-optimized preprocessing pipeline
     test_df = test_df.assign(
-        normalized_input=test_df["input"].apply(preprocessor.preprocess_text_pipeline)
+        normalized_input=test_df["input"].apply(
+            lambda x: preprocessor.preprocess_for_sentiment(x, preserve_negation=True)
+        )
     )
 
     print("\n=== POST-PREPROCESSING VALIDATION ===")
@@ -187,17 +196,24 @@ def main():
     # Import và khởi tạo ModelTrainer
     from model_trainer import ModelTrainer
 
-    print(f"\n=== STARTING MODEL TRAINING PIPELINE ===")
-    model_trainer = ModelTrainer(output_dir="reports")
+    print(f"\n=== STARTING CONFIGURATION-DRIVEN TRAINING PIPELINE ===")
 
-    # Chạy training pipeline với tất cả models
-    print("Running training pipeline for all models...")
-    training_results = model_trainer.run_training_pipeline(
-        train_df=train_df,
-        test_df=test_df,
-        optimize_hyperparameters=False,  # Set True nếu muốn tối ưu hyperparameters (tốn thời gian)
-        save_results=True,
-    )
+    # Initialize ModelTrainer
+    model_trainer = ModelTrainer(output_dir="reports")
+    
+    # Tối ưu hóa cho MAXIMUM ACCURACY (chấp nhận training time lâu hơn) - Fallback params
+    # Run training pipeline with configuration
+    if config:
+        print("Using JSON configuration-driven training")
+        training_results = model_trainer.run_training_pipeline_with_configs(
+            train_df=train_df,
+            test_df=test_df,
+            model_configs=config,
+            save_results=True
+        )
+    else:
+        print("No config available")
+        
 
     print(f"\n" + "=" * 100)
     print("PIPELINE COMPLETED SUCCESSFULLY!")
@@ -205,6 +221,8 @@ def main():
     print("Check the 'reports/' directory for detailed JSON results.")
     print(f"=" * 100)
 
+    # Temporarily comment out LDA section for testing
+    """
     print(f"\n=== TOPIC MODEL TRAINING GENSIM LDA PIPELINE ===")
     from gensim_lda import GensimLDA, run_lda_analysis
 
