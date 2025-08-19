@@ -1,0 +1,350 @@
+{
+  "config_info": {
+    "name": "MacBook Air M1 Optimized Configuration",
+    "description": "Tối ưu cho MacBook Air M1 8GB RAM - cân bằng accuracy vs performance trong 3 tiếng",
+    "target_dataset_size": 1000000,
+    "expected_training_time": "2.5-3 hours",
+    "memory_requirement": "6-7GB RAM",
+    "priority": "High Accuracy + Memory Efficient",
+    "optimization_basis": "Dựa trên analysis từ 11 runs, optimized cho M1 constraints"
+  },
+  "training_summary": {
+    "total_time_seconds": 13113.74,
+    "total_time_minutes": 218.56,
+    "train_dataset_size": 1000000,
+    "test_dataset_size": 100000,
+    "timestamp": "2025-08-19T08:21:56.382901"
+  },
+  "model_results": {
+    "logistic_regression": {
+      "model_name": "LogisticRegression",
+      "model_params": {
+        "C": 1.8,
+        "max_iter": 2000,
+        "solver": "liblinear",
+        "random_state": 42,
+        "class_weight": "balanced",
+        "dual": false,
+        "fit_intercept": true,
+        "tol": 0.0001
+      },
+      "tfidf_params": {
+        "max_features": 40000,
+        "stop_words": null,
+        "ngram_range": [
+          1,
+          3
+        ],
+        "min_df": 3,
+        "max_df": 0.88,
+        "sublinear_tf": true,
+        "lowercase": true,
+        "strip_accents": "unicode",
+        "norm": "l2",
+        "use_idf": true,
+        "smooth_idf": true,
+        "analyzer": "word"
+      },
+      "train_accuracy": 0.9374,
+      "test_accuracy": 0.925,
+      "overfitting_score": 0.0124,
+      "f1_macro": 0.925,
+      "f1_weighted": 0.925,
+      "classification_report": {
+        "1": {
+          "precision": 0.9268188389566492,
+          "recall": 0.9210052406871573,
+          "f1-score": 0.9239028944911298,
+          "support": 49421.0
+        },
+        "2": {
+          "precision": 0.9232840102969208,
+          "recall": 0.9289428418909034,
+          "f1-score": 0.92610478180313,
+          "support": 50579.0
+        },
+        "accuracy": 0.92502,
+        "macro avg": {
+          "precision": 0.9250514246267849,
+          "recall": 0.9249740412890304,
+          "f1-score": 0.9250038381471299,
+          "support": 100000.0
+        },
+        "weighted avg": {
+          "precision": 0.9250309579688452,
+          "recall": 0.92502,
+          "f1-score": 0.9250165870746665,
+          "support": 100000.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          45517,
+          3904
+        ],
+        [
+          3594,
+          46985
+        ]
+      ],
+      "training_time": 4635.31,
+      "model_config": {
+        "model_params": {
+          "C": 1.8,
+          "max_iter": 2000,
+          "solver": "liblinear",
+          "class_weight": "balanced",
+          "random_state": 42,
+          "dual": false,
+          "fit_intercept": true,
+          "tol": 0.0001
+        },
+        "tfidf_params": {
+          "max_features": 40000,
+          "ngram_range": [
+            1,
+            3
+          ],
+          "min_df": 3,
+          "max_df": 0.88,
+          "sublinear_tf": true,
+          "stop_words": null,
+          "lowercase": true,
+          "strip_accents": "unicode",
+          "norm": "l2",
+          "use_idf": true,
+          "smooth_idf": true,
+          "analyzer": "word"
+        },
+        "training_params": {
+          "test_size": 0.1,
+          "stratify": true,
+          "shuffle": true
+        }
+      },
+      "config_name": "MacBook Air M1 Optimized Configuration"
+    },
+    "random_forest": {
+      "model_name": "RandomForestClassifier",
+      "model_params": {
+        "n_estimators": 200,
+        "max_depth": 20,
+        "min_samples_split": 5,
+        "min_samples_leaf": 2,
+        "max_features": "sqrt",
+        "random_state": 42,
+        "bootstrap": true,
+        "oob_score": true,
+        "class_weight": "balanced",
+        "n_jobs": 4
+      },
+      "tfidf_params": {
+        "max_features": 15000,
+        "stop_words": null,
+        "ngram_range": [
+          1,
+          3
+        ],
+        "min_df": 3,
+        "max_df": 0.88,
+        "sublinear_tf": true,
+        "lowercase": true,
+        "strip_accents": "unicode",
+        "norm": "l2",
+        "use_idf": true,
+        "smooth_idf": true,
+        "analyzer": "word"
+      },
+      "train_accuracy": 0.8527,
+      "test_accuracy": 0.8466,
+      "overfitting_score": 0.0062,
+      "f1_macro": 0.8462,
+      "f1_weighted": 0.8462,
+      "classification_report": {
+        "1": {
+          "precision": 0.874876240346747,
+          "recall": 0.8045972359927965,
+          "f1-score": 0.8382662956404419,
+          "support": 49421.0
+        },
+        "2": {
+          "precision": 0.8229665071770335,
+          "recall": 0.8875620316732241,
+          "f1-score": 0.854044593257743,
+          "support": 50579.0
+        },
+        "accuracy": 0.84656,
+        "macro avg": {
+          "precision": 0.8489213737618903,
+          "recall": 0.8460796338330103,
+          "f1-score": 0.8461554444490924,
+          "support": 100000.0
+        },
+        "weighted avg": {
+          "precision": 0.8486208164068375,
+          "recall": 0.84656,
+          "f1-score": 0.8462468007922965,
+          "support": 100000.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          39764,
+          9657
+        ],
+        [
+          5687,
+          44892
+        ]
+      ],
+      "training_time": 4065.95,
+      "model_config": {
+        "model_params": {
+          "n_estimators": 200,
+          "max_depth": 20,
+          "min_samples_split": 5,
+          "min_samples_leaf": 2,
+          "max_features": "sqrt",
+          "bootstrap": true,
+          "oob_score": true,
+          "class_weight": "balanced",
+          "random_state": 42,
+          "n_jobs": 4
+        },
+        "tfidf_params": {
+          "max_features": 15000,
+          "ngram_range": [
+            1,
+            3
+          ],
+          "min_df": 3,
+          "max_df": 0.88,
+          "sublinear_tf": true,
+          "stop_words": null,
+          "lowercase": true,
+          "strip_accents": "unicode",
+          "norm": "l2",
+          "use_idf": true,
+          "smooth_idf": true,
+          "analyzer": "word"
+        },
+        "training_params": {
+          "test_size": 0.1,
+          "stratify": true,
+          "shuffle": true
+        }
+      },
+      "config_name": "MacBook Air M1 Optimized Configuration"
+    },
+    "gradient_boosting": {
+      "model_name": "GradientBoostingClassifier",
+      "model_params": {
+        "n_estimators": 250,
+        "learning_rate": 0.1,
+        "max_depth": 6,
+        "max_features": "sqrt",
+        "random_state": 42,
+        "subsample": 0.8,
+        "validation_fraction": 0.1,
+        "n_iter_no_change": 15,
+        "tol": 0.0001
+      },
+      "tfidf_params": {
+        "max_features": 10000,
+        "stop_words": null,
+        "ngram_range": [
+          1,
+          3
+        ],
+        "min_df": 3,
+        "max_df": 0.88,
+        "sublinear_tf": true,
+        "lowercase": true,
+        "strip_accents": "unicode",
+        "norm": "l2",
+        "use_idf": true,
+        "smooth_idf": true,
+        "analyzer": "word"
+      },
+      "train_accuracy": 0.8661,
+      "test_accuracy": 0.8639,
+      "overfitting_score": 0.0022,
+      "f1_macro": 0.8639,
+      "f1_weighted": 0.8639,
+      "classification_report": {
+        "1": {
+          "precision": 0.8734723670490094,
+          "recall": 0.8474737459784302,
+          "f1-score": 0.8602766737529655,
+          "support": 49421.0
+        },
+        "2": {
+          "precision": 0.8551777137367915,
+          "recall": 0.8800490322070424,
+          "f1-score": 0.867435130421226,
+          "support": 50579.0
+        },
+        "accuracy": 0.86395,
+        "macro avg": {
+          "precision": 0.8643250403929005,
+          "recall": 0.8637613890927363,
+          "f1-score": 0.8638559020870957,
+          "support": 100000.0
+        },
+        "weighted avg": {
+          "precision": 0.8642191143502228,
+          "recall": 0.86395,
+          "f1-score": 0.8638973495512048,
+          "support": 100000.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          41883,
+          7538
+        ],
+        [
+          6067,
+          44512
+        ]
+      ],
+      "training_time": 4411.74,
+      "model_config": {
+        "model_params": {
+          "n_estimators": 250,
+          "learning_rate": 0.1,
+          "max_depth": 6,
+          "subsample": 0.8,
+          "max_features": "sqrt",
+          "validation_fraction": 0.1,
+          "n_iter_no_change": 15,
+          "tol": 0.0001,
+          "random_state": 42
+        },
+        "tfidf_params": {
+          "max_features": 10000,
+          "ngram_range": [
+            1,
+            3
+          ],
+          "min_df": 3,
+          "max_df": 0.88,
+          "sublinear_tf": true,
+          "stop_words": null,
+          "lowercase": true,
+          "strip_accents": "unicode",
+          "norm": "l2",
+          "use_idf": true,
+          "smooth_idf": true,
+          "analyzer": "word"
+        },
+        "training_params": {
+          "test_size": 0.1,
+          "stratify": true,
+          "shuffle": true
+        }
+      },
+      "config_name": "MacBook Air M1 Optimized Configuration"
+    }
+  }
+}

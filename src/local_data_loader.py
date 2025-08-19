@@ -6,13 +6,14 @@ class LocalDataLoader:
 
     def __init__(self, config):
         self.config = config
-        
-    def prepare_dataframes(self):
+
+
+    def prepare_dataframes(self, data_root = ".."):
         """Load data từ local và chuẩn bị cho pipeline"""
         # Load data
-        train_df = pd.read_csv("../data/amazon_reviews/train.csv")
-        test_df = pd.read_csv("../data/amazon_reviews/test.csv")
-        
+        train_df = pd.read_csv(f"{data_root}/amazon_reviews/train.csv")
+        test_df = pd.read_csv(f"{data_root}/amazon_reviews/test.csv")
+
         # Đặt tên cột
         train_df.columns = ["label", "title", "text"]
         test_df.columns = ["label", "title", "text"]
