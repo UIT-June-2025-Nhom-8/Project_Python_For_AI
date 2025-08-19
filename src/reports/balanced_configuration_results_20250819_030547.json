@@ -1,0 +1,314 @@
+{
+  "config_info": {
+    "name": "Balanced Configuration",
+    "description": "Cân bằng giữa độ chính xác và performance, data có thể lên tới 500k samples",
+    "target_dataset_size": 100000,
+    "expected_training_time": "1-1.5 hours",
+    "memory_requirement": "8GB RAM",
+    "priority": "Balance Accuracy & Speed"
+  },
+  "training_summary": {
+    "total_time_seconds": 30.87,
+    "total_time_minutes": 0.51,
+    "train_dataset_size": 100000,
+    "test_dataset_size": 10000,
+    "timestamp": "2025-08-19T03:05:47.613154"
+  },
+  "model_results": {
+    "logistic_regression": {
+      "model_name": "LogisticRegression",
+      "model_params": {
+        "C": 1.0,
+        "max_iter": 1500,
+        "solver": "liblinear",
+        "random_state": 42,
+        "class_weight": "balanced"
+      },
+      "tfidf_params": {
+        "max_features": 5000,
+        "stop_words": null,
+        "ngram_range": [
+          1,
+          2
+        ],
+        "min_df": 5,
+        "max_df": 0.85,
+        "sublinear_tf": true,
+        "lowercase": true,
+        "strip_accents": "unicode"
+      },
+      "train_accuracy": 0.9141,
+      "test_accuracy": 0.8969,
+      "overfitting_score": 0.0172,
+      "f1_macro": 0.8968,
+      "f1_weighted": 0.8969,
+      "classification_report": {
+        "1": {
+          "precision": 0.896310039167182,
+          "recall": 0.8917145200984413,
+          "f1-score": 0.8940063740104863,
+          "support": 4876.0
+        },
+        "2": {
+          "precision": 0.8974558166634298,
+          "recall": 0.9018345042935206,
+          "f1-score": 0.8996398325708167,
+          "support": 5124.0
+        },
+        "accuracy": 0.8969,
+        "macro avg": {
+          "precision": 0.8968829279153059,
+          "recall": 0.8967745121959809,
+          "f1-score": 0.8968231032906515,
+          "support": 10000.0
+        },
+        "weighted avg": {
+          "precision": 0.8968971355562593,
+          "recall": 0.8969,
+          "f1-score": 0.8968929581767996,
+          "support": 10000.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          4348,
+          528
+        ],
+        [
+          503,
+          4621
+        ]
+      ],
+      "training_time": 9.13,
+      "model_config": {
+        "model_params": {
+          "C": 1.0,
+          "max_iter": 1500,
+          "solver": "liblinear",
+          "class_weight": "balanced",
+          "random_state": 42
+        },
+        "tfidf_params": {
+          "max_features": 5000,
+          "ngram_range": [
+            1,
+            2
+          ],
+          "min_df": 5,
+          "max_df": 0.85,
+          "sublinear_tf": true,
+          "stop_words": null,
+          "lowercase": true,
+          "strip_accents": "unicode"
+        },
+        "training_params": {
+          "test_size": 0.2,
+          "stratify": true
+        }
+      },
+      "config_name": "Balanced Configuration"
+    },
+    "random_forest": {
+      "model_name": "RandomForestClassifier",
+      "model_params": {
+        "n_estimators": 150,
+        "max_depth": 20,
+        "min_samples_split": 5,
+        "min_samples_leaf": 2,
+        "max_features": "log2",
+        "random_state": 42,
+        "bootstrap": true,
+        "class_weight": "balanced",
+        "n_jobs": -1
+      },
+      "tfidf_params": {
+        "max_features": 5000,
+        "stop_words": null,
+        "ngram_range": [
+          1,
+          2
+        ],
+        "min_df": 5,
+        "max_df": 0.85,
+        "sublinear_tf": true,
+        "lowercase": true,
+        "strip_accents": "unicode"
+      },
+      "train_accuracy": 0.8665,
+      "test_accuracy": 0.8464,
+      "overfitting_score": 0.0201,
+      "f1_macro": 0.8456,
+      "f1_weighted": 0.8459,
+      "classification_report": {
+        "1": {
+          "precision": 0.8800637232589895,
+          "recall": 0.7930680885972108,
+          "f1-score": 0.8343042071197411,
+          "support": 4876.0
+        },
+        "2": {
+          "precision": 0.8200142704245451,
+          "recall": 0.8971506635441062,
+          "f1-score": 0.8568499534016776,
+          "support": 5124.0
+        },
+        "accuracy": 0.8464,
+        "macro avg": {
+          "precision": 0.8500389968417673,
+          "recall": 0.8451093760706585,
+          "f1-score": 0.8455770802607093,
+          "support": 10000.0
+        },
+        "weighted avg": {
+          "precision": 0.8492943836266202,
+          "recall": 0.8464,
+          "f1-score": 0.8458566475146053,
+          "support": 10000.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          3867,
+          1009
+        ],
+        [
+          527,
+          4597
+        ]
+      ],
+      "training_time": 10.31,
+      "model_config": {
+        "model_params": {
+          "n_estimators": 150,
+          "max_depth": 20,
+          "min_samples_split": 5,
+          "min_samples_leaf": 2,
+          "max_features": "log2",
+          "bootstrap": true,
+          "class_weight": "balanced",
+          "random_state": 42,
+          "n_jobs": -1
+        },
+        "tfidf_params": {
+          "max_features": 5000,
+          "ngram_range": [
+            1,
+            2
+          ],
+          "min_df": 5,
+          "max_df": 0.85,
+          "sublinear_tf": true,
+          "stop_words": null,
+          "lowercase": true,
+          "strip_accents": "unicode"
+        },
+        "training_params": {
+          "test_size": 0.2,
+          "stratify": true
+        }
+      },
+      "config_name": "Balanced Configuration"
+    },
+    "gradient_boosting": {
+      "model_name": "GradientBoostingClassifier",
+      "model_params": {
+        "n_estimators": 150,
+        "learning_rate": 0.1,
+        "max_depth": 4,
+        "max_features": "log2",
+        "random_state": 42,
+        "subsample": 0.8,
+        "validation_fraction": 0.1,
+        "n_iter_no_change": 10,
+        "tol": 0.0001
+      },
+      "tfidf_params": {
+        "max_features": 5000,
+        "stop_words": null,
+        "ngram_range": [
+          1,
+          2
+        ],
+        "min_df": 5,
+        "max_df": 0.85,
+        "sublinear_tf": true,
+        "lowercase": true,
+        "strip_accents": "unicode"
+      },
+      "train_accuracy": 0.8295,
+      "test_accuracy": 0.8209,
+      "overfitting_score": 0.0086,
+      "f1_macro": 0.8193,
+      "f1_weighted": 0.8197,
+      "classification_report": {
+        "1": {
+          "precision": 0.8685782556750299,
+          "recall": 0.7454881050041017,
+          "f1-score": 0.8023396976051208,
+          "support": 4876.0
+        },
+        "2": {
+          "precision": 0.7865864144453998,
+          "recall": 0.8926619828259172,
+          "f1-score": 0.8362738824389798,
+          "support": 5124.0
+        },
+        "accuracy": 0.8209,
+        "macro avg": {
+          "precision": 0.8275823350602148,
+          "recall": 0.8190750439150094,
+          "f1-score": 0.8193067900220503,
+          "support": 10000.0
+        },
+        "weighted avg": {
+          "precision": 0.8265656362289674,
+          "recall": 0.8209,
+          "f1-score": 0.8197275739139903,
+          "support": 10000.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          3635,
+          1241
+        ],
+        [
+          550,
+          4574
+        ]
+      ],
+      "training_time": 11.38,
+      "model_config": {
+        "model_params": {
+          "n_estimators": 150,
+          "learning_rate": 0.1,
+          "max_depth": 4,
+          "subsample": 0.8,
+          "max_features": "log2",
+          "validation_fraction": 0.1,
+          "n_iter_no_change": 10,
+          "tol": 0.0001,
+          "random_state": 42
+        },
+        "tfidf_params": {
+          "max_features": 5000,
+          "ngram_range": [
+            1,
+            2
+          ],
+          "min_df": 5,
+          "max_df": 0.85,
+          "sublinear_tf": true,
+          "stop_words": null,
+          "lowercase": true,
+          "strip_accents": "unicode"
+        },
+        "training_params": {
+          "test_size": 0.2,
+          "stratify": true
+        }
+      },
+      "config_name": "Balanced Configuration"
+    }
+  }
+}

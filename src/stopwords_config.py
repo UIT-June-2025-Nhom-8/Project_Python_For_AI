@@ -221,18 +221,45 @@ def get_basic_stopwords():
     }
 
 
+def get_sentiment_stopwords():
+    """
+    Get stopwords optimized for sentiment analysis - preserves negation and emotion words
+    
+    Returns:
+        set: Stopwords set optimized for sentiment analysis
+    """
+    # Start with NLTK stopwords but remove sentiment-critical words
+    nltk_stops = get_nltk_stopwords()
+    
+    # Remove negation words and sentiment-critical words from stopwords
+    sentiment_critical_words = {
+        "not", "no", "never", "none", "neither", "nor", "nothing", "nowhere",
+        "but", "however", "although", "though", "yet", "still",
+        "very", "really", "quite", "pretty", "too", "much", "more", "most",
+        "good", "bad", "best", "worst", "better", "worse",
+        "love", "hate", "like", "dislike",
+        "great", "terrible", "awful", "amazing", "excellent", "poor"
+    }
+    
+    # Remove sentiment-critical words from NLTK stopwords
+    filtered_nltk_stops = nltk_stops - sentiment_critical_words
+    
+    return filtered_nltk_stops
+
+
 def get_extended_stopwords():
     """
     Get extended stopwords including NLTK + additional domain-specific words
+    (Original version - preserved for compatibility)
 
     Returns:
         set: Extended set of stopwords for better filtering
     """
     nltk_stops = get_nltk_stopwords()
     additional_stops = {
-        # Common contractions and informal words
+        # Common contractions and informal words (but keep negation-related ones)
         "i'm",
-        "you're",
+        "you're", 
         "he's",
         "she's",
         "it's",
@@ -254,30 +281,13 @@ def get_extended_stopwords():
         "she'll",
         "we'll",
         "they'll",
-        "isn't",
-        "aren't",
-        "wasn't",
-        "weren't",
-        "haven't",
-        "hasn't",
-        "hadn't",
-        "won't",
-        "wouldn't",
-        "don't",
-        "doesn't",
-        "didn't",
-        "can't",
-        "couldn't",
-        "shouldn't",
-        "mustn't",
-        "needn't",
-        "daren't",
-        "mayn't",
-        "oughtn't",
-        # Common filler words
+        # Remove negation contractions from stopwords for sentiment analysis
+        # "isn't", "aren't", "wasn't", "weren't", "haven't", "hasn't", "hadn't",
+        # "won't", "wouldn't", "don't", "doesn't", "didn't", "can't", "couldn't",
+        # "shouldn't", "mustn't", "needn't", "daren't", "mayn't", "oughtn't",
+        # Common filler words (but preserve some sentiment-relevant ones)
         "yeah",
-        "yes",
-        "no",
+        "yes", 
         "okay",
         "ok",
         "oh",
@@ -285,11 +295,8 @@ def get_extended_stopwords():
         "um",
         "hmm",
         "well",
-        "like",
-        "just",
-        "really",
-        "quite",
-        "pretty",
+        # Remove "like", "just", "really", "quite", "pretty" as they can indicate sentiment intensity
+        # "like", "just", "really", "quite", "pretty",
         "sort",
         "kind",
         "thing",
@@ -341,17 +348,20 @@ def get_extended_stopwords():
 NLTK_STOPWORDS = get_nltk_stopwords()
 BASIC_STOPWORDS = get_basic_stopwords()
 EXTENDED_STOPWORDS = get_extended_stopwords()
+SENTIMENT_STOPWORDS = get_sentiment_stopwords()
 
-DEFAULT_PREPROCESSING_STOPWORDS = NLTK_STOPWORDS  # For PreProcessor
+DEFAULT_PREPROCESSING_STOPWORDS = SENTIMENT_STOPWORDS  # For sentiment analysis tasks
 DEFAULT_WORDCLOUD_STOPWORDS = EXTENDED_STOPWORDS  # For WordCloud (more comprehensive)
 
 __all__ = [
     "get_nltk_stopwords",
-    "get_basic_stopwords",
+    "get_basic_stopwords", 
     "get_extended_stopwords",
+    "get_sentiment_stopwords",
     "NLTK_STOPWORDS",
     "BASIC_STOPWORDS",
     "EXTENDED_STOPWORDS",
+    "SENTIMENT_STOPWORDS",
     "DEFAULT_PREPROCESSING_STOPWORDS",
     "DEFAULT_WORDCLOUD_STOPWORDS",
 ]

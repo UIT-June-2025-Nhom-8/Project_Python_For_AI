@@ -1,320 +1,265 @@
 import pandas as pd
 import numpy as np
+import json
+import time
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
 import pickle
 import os
 
-
 class GradientBoostingAnalyzer:
     """
-    Lớp phân tích cảm xúc sử dụng GradientBoostingClassifier
+    Đơn giản hóa GradientBoostingClassifier cho phân tích cảm xúc
     """
     
     def __init__(self):
-        """Khởi tạo các thành phần của GradientBoostingAnalyzer"""
-        self.model = None
-        # TF-IDF Vectorizer với cấu hình tối ưu
-        self.tfidf_vectorizer = TfidfVectorizer(
-            max_features=30000,  # Tăng từ 10k lên 30k
-            stop_words='english',
-            ngram_range=(1, 2),  # Sử dụng unigrams và bigrams
-            min_df=2,           # Loại bỏ từ xuất hiện ít hơn 2 lần
-            max_df=0.95,        # Loại bỏ từ xuất hiện quá nhiều
-            sublinear_tf=True,  # Áp dụng scaling logarithmic
-            analyzer='word',
-            lowercase=True
-        )
-        self.label_encoder = LabelEncoder()
-        self.X_train = None
-        self.X_test = None
-        self.y_train = None
-        self.y_test = None
-        self.results = {}
-        
-    def prepare_data(self, df, text_column, test_size=0.2, random_state=42):
-        """
-        Chuẩn bị dữ liệu cho machine learning
-        
-        Args:
-            df (pd.DataFrame): DataFrame chứa dữ liệu
-            text_column (str): Tên cột chứa text cần phân tích
-            test_size (float): Tỷ lệ dữ liệu test
-            random_state (int): Random state cho reproducibility
-        """
-        print("Chuẩn bị dữ liệu cho GradientBoosting...")
-        
-        # Vectorize text data
-        print("Creating enhanced TF-IDF features...")
-        X = self.tfidf_vectorizer.fit_transform(df[text_column].fillna(''))
-        
-        # Thêm numerical features nếu có
-        numerical_features = []
-        for col in df.columns:
-            if (col.endswith('_count') or col.endswith('_length') or 
-                col.startswith('has_') or col in ['exclamation_count', 'question_count', 
-                                                'uppercase_count', 'negation_count']):
-                if col in df.columns and df[col].dtype in ['int64', 'float64']:
-                    numerical_features.append(col)
-        
-        if numerical_features:
-            print(f"Adding {len(numerical_features)} numerical features")
-            from scipy.sparse import hstack
-            from sklearn.preprocessing import StandardScaler
-            
-            # Chuẩn hóa numerical features
-            scaler = StandardScaler()
-            numerical_data = scaler.fit_transform(df[numerical_features])
-            
-            # Kết hợp text features và numerical features
-            X = hstack([X, numerical_data])
-            self.scaler = scaler
-            self.numerical_features = numerical_features
-        else:
-            X = X
-            self.scaler = None
-            self.numerical_features = []
-        
-        # Encode labels
-        y = self.label_encoder.fit_transform(df['sentiment'])
-        
-        # Split data
-        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
-            X, y, test_size=test_size, random_state=random_state, stratify=y
-        )
-        
-        print(f"Training set size: {self.X_train.shape}")
-        print(f"Test set size: {self.X_test.shape}")
-        
-    def initialize_model(self, **kwargs):
-        """
-        Khởi tạo GradientBoostingClassifier với các tham số tùy chỉnh
-        
-        Args:
-            **kwargs: Các tham số cho GradientBoostingClassifier
-        """
-        default_params = {
-            'n_estimators': 200,        # Tăng từ 100
-            'learning_rate': 0.1,       # Giữ nguyên
-            'max_depth': 8,             # Tăng từ 3
-            'subsample': 0.8,           # Giảm overfitting
-            'min_samples_split': 10,    # Tăng để giảm overfitting
-            'min_samples_leaf': 5,      # Tăng để giảm overfitting
+        self.model_params = {
+            'n_estimators': 200,
+            'learning_rate': 0.15,
+            'max_depth': 4,
+            'max_features': 'sqrt',  # Model max_features: số features xem xét cho mỗi split
             'random_state': 42
         }
-        default_params.update(kwargs)
         
-        self.model = GradientBoostingClassifier(**default_params)
-        print(f"Khởi tạo GradientBoostingClassifier với tham số: {default_params}")
+        self.tfidf_params = {
+            'max_features': 5000,  # TF-IDF max_features: số từ trong vocabulary
+            'stop_words': None,
+            'ngram_range': (1, 3),
+            'min_df': 2,
+            'max_df': 0.92,
+            'sublinear_tf': True,
+            'lowercase': True,
+            'strip_accents': 'unicode'
+        }
         
-    def train_model(self):
+        self.model = None
+        self.tfidf_vectorizer = None
+        self.label_encoder = LabelEncoder()
+        self.results = {}
+        self.models_dir = "output/models/"
+        os.makedirs(self.models_dir, exist_ok=True)
+    
+    def update_tfidf_params(self, tfidf_config):
+        if tfidf_config:
+            # Update tất cả TF-IDF parameters
+            self.tfidf_params.update(tfidf_config)
+            
+            # Convert ngram_range from list to tuple if needed
+            if 'ngram_range' in self.tfidf_params and isinstance(self.tfidf_params['ngram_range'], list):
+                self.tfidf_params['ngram_range'] = tuple(self.tfidf_params['ngram_range'])
+                
+            print(f"TF-IDF params updated: {self.tfidf_params}")
+
+    def update_model_params(self, model_config):
+        if model_config:
+            # Update tất cả model parameters
+            self.model_params.update(model_config)
+                
+            print(f"Model params updated: {self.model_params}")
+    
+    def _save_model(self, model_name_suffix=""):
+        """Save trained model to file"""
+        if self.model is None or self.tfidf_vectorizer is None:
+            print("❌ No trained model to save")
+            return
+            
+        try:
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            filename = f"gradient_boosting_{timestamp}{model_name_suffix}.pkl"
+            filepath = os.path.join(self.models_dir, filename)
+            
+            model_data = {
+                'model': self.model,
+                'tfidf_vectorizer': self.tfidf_vectorizer,
+                'label_encoder': self.label_encoder,
+                'results': self.results,
+                'model_params': self.model_params,
+                'tfidf_params': self.tfidf_params,
+                'timestamp': timestamp
+            }
+            
+            with open(filepath, 'wb') as f:
+                pickle.dump(model_data, f)
+            
+            print(f"✅ Model saved to: {filepath}")
+            
+        except Exception as e:
+            print(f"❌ Failed to save model: {e}")
+    
+    def train_and_evaluate(self, train_df, test_df, text_column='normalized_input', target_column='label'):
         """
-        Huấn luyện model GradientBoostingClassifier
+        Main method: train model
         
+        Args:
+            train_df (pd.DataFrame): Training data đã preprocessed
+            test_df (pd.DataFrame): Test data đã preprocessed  
+            text_column (str): Tên cột text ('normalized_input' for tokens, 'input' for raw text)
+            target_column (str): Tên cột target
+            
         Returns:
-            dict: Kết quả huấn luyện bao gồm accuracy và metrics
+            dict: Kết quả training/evaluation
         """
-        if self.model is None:
-            self.initialize_model()
-            
-        if self.X_train is None:
-            raise ValueError("Chưa chuẩn bị dữ liệu. Hãy gọi prepare_data() trước.")
-            
-        print("Bắt đầu huấn luyện GradientBoostingClassifier...")
+        print("\n=== GRADIENT BOOSTING CLASSIFIER ===")
         
-        # Huấn luyện model
+        # Train new model
+        print("Training new model...")
+        start_time = time.time()
+        
+        # Prepare data
+        self._prepare_data(train_df, test_df, text_column, target_column)
+        
+        # Initialize and train model
+        self._initialize_model()
+        self._train_model()
+        
+        training_time = time.time() - start_time
+        self.results['training_time'] = round(training_time, 2)
+        
+        # Print results and save model
+        self._print_results()
+        self._save_model()
+        
+        return self.results
+    
+    def _prepare_data(self, train_df, test_df, text_column, target_column):
+        """Chuẩn bị dữ liệu từ preprocessed tokens hoặc raw text"""
+        
+        # Convert tokens to text if using normalized_input
+        if text_column == 'normalized_input':
+            # Convert list of tokens back to text for TF-IDF
+            train_texts = train_df[text_column].apply(
+                lambda x: ' '.join(x) if isinstance(x, list) else str(x)
+            )
+            test_texts = test_df[text_column].apply(
+                lambda x: ' '.join(x) if isinstance(x, list) else str(x)
+            )
+            print(f"✅ Using preprocessed tokens from '{text_column}'")
+        else:
+            # Use raw text directly
+            train_texts = train_df[text_column].fillna('')
+            test_texts = test_df[text_column].fillna('')
+            print(f"✅ Using raw text from '{text_column}'")
+        
+        # Tạo TF-IDF vectorizer với params có thể được config từ JSON
+        self.tfidf_vectorizer = TfidfVectorizer(**self.tfidf_params)
+        
+        # Fit vectorizer trên training data và transform cả train và test
+        self.X_train = self.tfidf_vectorizer.fit_transform(train_texts)
+        self.X_test = self.tfidf_vectorizer.transform(test_texts)
+        
+        # Encode labels
+        self.y_train = self.label_encoder.fit_transform(train_df[target_column])
+        self.y_test = self.label_encoder.transform(test_df[target_column])
+        
+        print(f"Data prepared: Train {self.X_train.shape}, Test {self.X_test.shape}")
+        print(f"Label classes: {self.label_encoder.classes_}")
+    
+    def _initialize_model(self):
+        """Khởi tạo model với model_params"""
+        model_params = {
+            'n_estimators': self.model_params['n_estimators'],
+            'learning_rate': self.model_params['learning_rate'],
+            'max_depth': self.model_params['max_depth'],
+            'random_state': self.model_params['random_state'],
+            'subsample': self.model_params.get('subsample', 0.8), 
+            'validation_fraction': self.model_params.get('validation_fraction', 0.1),  
+            'n_iter_no_change': self.model_params.get('n_iter_no_change', 10), 
+            'tol': self.model_params.get('tol', 1e-4),  # Default 1e-4
+            'max_features': self.model_params.get('max_features', 'sqrt'), 
+        }
+            
+        self.model = GradientBoostingClassifier(**model_params)
+    
+    def _train_model(self):
+        """Train model và tính metrics"""
+        # Train
         self.model.fit(self.X_train, self.y_train)
         
-        # Dự đoán
+        # Predict
         train_pred = self.model.predict(self.X_train)
         test_pred = self.model.predict(self.X_test)
         
-        # Tính accuracy
+        # Metrics
         train_acc = accuracy_score(self.y_train, train_pred)
         test_acc = accuracy_score(self.y_test, test_pred)
+        f1_macro = f1_score(self.y_test, test_pred, average='macro')
+        f1_weighted = f1_score(self.y_test, test_pred, average='weighted')
         
-        # Tạo classification report
+        # Classification report
         report = classification_report(
-            self.y_test, test_pred, 
+            self.y_test, test_pred,
             target_names=self.label_encoder.classes_,
             output_dict=True
         )
         
-        # Confusion matrix
-        cm = confusion_matrix(self.y_test, test_pred)
-        
         # Lưu kết quả
         self.results = {
             'model_name': 'GradientBoostingClassifier',
-            'train_accuracy': train_acc,
-            'test_accuracy': test_acc,
+            'model_params': self.model_params,
+            'tfidf_params': self.tfidf_params,
+            'train_accuracy': round(train_acc, 4),
+            'test_accuracy': round(test_acc, 4),
+            'overfitting_score': round(train_acc - test_acc, 4),
+            'f1_macro': round(f1_macro, 4),
+            'f1_weighted': round(f1_weighted, 4),
             'classification_report': report,
-            'confusion_matrix': cm,
-            'feature_importance': self.model.feature_importances_ if hasattr(self.model, 'feature_importances_') else None
+            'confusion_matrix': confusion_matrix(self.y_test, test_pred).tolist()
         }
-        
-        print(f"Huấn luyện hoàn thành!")
-        print(f"Training Accuracy: {train_acc:.4f}")
-        print(f"Test Accuracy: {test_acc:.4f}")
-        
-        return self.results
     
-    def evaluate_model(self):
-        """
-        Đánh giá chi tiết model
-        
-        Returns:
-            tuple: (classification_report, confusion_matrix)
-        """
-        if not self.results:
-            raise ValueError("Chưa huấn luyện model. Hãy gọi train_model() trước.")
-            
-        print("\n=== ĐÁNH GIÁ GRADIENT BOOSTING CLASSIFIER ===")
+    def _print_results(self):
+        """Print training results to console"""
+        print(f"\n{'='*50}")
+        print(f"{self.results['model_name']} Results:")
+        print(f"{'='*50}")
         print(f"Training Accuracy: {self.results['train_accuracy']:.4f}")
         print(f"Test Accuracy: {self.results['test_accuracy']:.4f}")
+        print(f"Overfitting Score: {self.results['overfitting_score']:.4f}")
+        print(f"F1-Macro: {self.results['f1_macro']:.4f}")
+        print(f"F1-Weighted: {self.results['f1_weighted']:.4f}")
         
-        print("\nClassification Report:")
-        report_df = pd.DataFrame(self.results['classification_report']).transpose()
-        print(report_df)
+        if 'training_time' in self.results:
+            print(f"Training Time: {self.results['training_time']:.2f} seconds")
         
-        print(f"\nConfusion Matrix:")
-        print(self.results['confusion_matrix'])
-        
-        if self.results['feature_importance'] is not None:
-            print(f"\nTop 10 Feature Importances:")
-            feature_names = self.tfidf_vectorizer.get_feature_names_out()
-            importance_df = pd.DataFrame({
-                'feature': feature_names,
-                'importance': self.results['feature_importance']
-            }).sort_values('importance', ascending=False)
-            print(importance_df.head(10))
-        
-        return self.results['classification_report'], self.results['confusion_matrix']
+        # Print per-class metrics
+        report = self.results['classification_report']
+        print(f"\nPer-Class Performance:")
+        for class_name in self.label_encoder.classes_:
+            if str(class_name) in report:
+                class_metrics = report[str(class_name)]
+                print(f"  {class_name}: Precision={class_metrics['precision']:.3f}, "
+                      f"Recall={class_metrics['recall']:.3f}, F1={class_metrics['f1-score']:.3f}")
     
-    def predict(self, text_data):
-        """
-        Dự đoán cảm xúc cho dữ liệu mới
+    def predict(self, texts):
+        """Predict sentiment for new texts"""
+        if self.model is None or self.tfidf_vectorizer is None:
+            raise ValueError("Model not trained. Call train_and_evaluate() first.")
         
-        Args:
-            text_data (list or str): Dữ liệu text cần dự đoán
-            
-        Returns:
-            list: Dự đoán cảm xúc
-        """
-        if self.model is None:
-            raise ValueError("Chưa huấn luyện model.")
-            
-        if isinstance(text_data, str):
-            text_data = [text_data]
-            
-        # Vectorize dữ liệu mới
-        X_new = self.tfidf_vectorizer.transform(text_data)
+        # Ensure texts is a list
+        if isinstance(texts, str):
+            texts = [texts]
         
-        # Dự đoán
+        # Transform texts using trained vectorizer
+        X_new = self.tfidf_vectorizer.transform(texts)
+        
+        # Predict
         predictions = self.model.predict(X_new)
         
-        # Chuyển đổi về label gốc
-        sentiment_predictions = self.label_encoder.inverse_transform(predictions)
+        # Convert back to original labels
+        predicted_labels = self.label_encoder.inverse_transform(predictions)
         
-        return sentiment_predictions.tolist()
+        # Get prediction probabilities if available
+        if hasattr(self.model, 'predict_proba'):
+            probabilities = self.model.predict_proba(X_new)
+            return predicted_labels, probabilities
+        else:
+            return predicted_labels
     
-    def predict_proba(self, text_data):
-        """
-        Dự đoán xác suất cho từng class
+    def get_results(self):
+        """Get complete training results"""
+        if not self.results:
+            raise ValueError("No results available. Train the model first.")
         
-        Args:
-            text_data (list or str): Dữ liệu text cần dự đoán
-            
-        Returns:
-            numpy.ndarray: Ma trận xác suất
-        """
-        if self.model is None:
-            raise ValueError("Chưa huấn luyện model.")
-            
-        if isinstance(text_data, str):
-            text_data = [text_data]
-            
-        # Vectorize dữ liệu mới
-        X_new = self.tfidf_vectorizer.transform(text_data)
-        
-        # Dự đoán xác suất
-        probabilities = self.model.predict_proba(X_new)
-        
-        return probabilities
-    
-    def save_model(self, model_path='models/gradient_boosting_model.pkl'):
-        """
-        Lưu model và các thành phần liên quan
-        
-        Args:
-            model_path (str): Đường dẫn lưu model
-        """
-        if self.model is None:
-            raise ValueError("Chưa huấn luyện model.")
-            
-        # Tạo thư mục nếu chưa tồn tại
-        os.makedirs(os.path.dirname(model_path), exist_ok=True)
-        
-        # Lưu toàn bộ analyzer
-        model_data = {
-            'model': self.model,
-            'tfidf_vectorizer': self.tfidf_vectorizer,
-            'label_encoder': self.label_encoder,
-            'results': self.results
-        }
-        
-        with open(model_path, 'wb') as f:
-            pickle.dump(model_data, f)
-            
-        print(f"Model đã được lưu tại: {model_path}")
-    
-    def load_model(self, model_path='models/gradient_boosting_model.pkl'):
-        """
-        Tải model đã lưu
-        
-        Args:
-            model_path (str): Đường dẫn đến model đã lưu
-        """
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(f"Không tìm thấy model tại: {model_path}")
-            
-        with open(model_path, 'rb') as f:
-            model_data = pickle.load(f)
-            
-        self.model = model_data['model']
-        self.tfidf_vectorizer = model_data['tfidf_vectorizer']
-        self.label_encoder = model_data['label_encoder']
-        self.results = model_data['results']
-        
-        print(f"Model đã được tải từ: {model_path}")
-    
-    def get_model_info(self):
-        """
-        Lấy thông tin về model
-        
-        Returns:
-            dict: Thông tin chi tiết về model
-        """
-        if self.model is None:
-            return {"status": "Model chưa được huấn luyện"}
-            
-        info = {
-            "model_type": "GradientBoostingClassifier",
-            "n_estimators": self.model.n_estimators,
-            "learning_rate": self.model.learning_rate,
-            "max_depth": self.model.max_depth,
-            "random_state": self.model.random_state,
-            "n_features": self.model.n_features_ if hasattr(self.model, 'n_features_') else None,
-            "n_classes": self.model.n_classes_ if hasattr(self.model, 'n_classes_') else None,
-        }
-        
-        if self.results:
-            info.update({
-                "train_accuracy": self.results['train_accuracy'],
-                "test_accuracy": self.results['test_accuracy']
-            })
-            
-        return info
+        return self.results.copy()
