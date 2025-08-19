@@ -1,4 +1,4 @@
-# 📊 LDA Topic Modeling Report (Amazon Reviews)
+# LDA Topic Modeling Report (Amazon Reviews)
 
 ## 1. Giới thiệu
 

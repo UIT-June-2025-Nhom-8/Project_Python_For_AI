@@ -1,14 +1,15 @@
-from lda_utils import run_lda_experiments, plot_coherence_and_perplexity
-
-
 def main():
-    # from kaggle_data_loader import KaggleDataLoader
-    from local_data_loader import LocalDataLoader as KaggleDataLoader
-    from config_loader import load_json_config
-    
-    # Load configuration
-    config = load_json_config('./configs/balanced_config.json')
+    from lda_utils import run_lda_experiments, plot_coherence_and_perplexity
+    from kaggle_data_loader import KaggleDataLoader
 
+    # from local_data_loader import LocalDataLoader as KaggleDataLoader
+    from config_loader import load_json_config
+    from pathlib import Path
+
+    # Load configuration with proper path
+    script_dir = Path(__file__).parent
+    config_path = script_dir / "configs" / "balanced_config.json"
+    config = load_json_config(str(config_path))
 
     CONFIG = {
         "train_size": config.get("dataset_config", {}).get("train_size", 1000),
@@ -28,7 +29,7 @@ def main():
 
     from pre_processor import PreProcessor
 
-    # Initialize preprocessor with sentiment optimization 
+    # Initialize preprocessor with sentiment optimization
     preprocessor = PreProcessor(use_lemmatization=True)
 
     print("\n=== TEXT PREPROCESSING ===")
@@ -201,20 +202,16 @@ def main():
 
     # Initialize ModelTrainer
     model_trainer = ModelTrainer(output_dir="reports")
-    
+
     # Tối ưu hóa cho MAXIMUM ACCURACY (chấp nhận training time lâu hơn) - Fallback params
     # Run training pipeline with configuration
     if config:
         print("Using JSON configuration-driven training")
         training_results = model_trainer.run_training_pipeline_with_configs(
-            train_df=train_df,
-            test_df=test_df,
-            model_configs=config,
-            save_results=True
+            train_df=train_df, test_df=test_df, model_configs=config, save_results=True
         )
     else:
         print("No config available")
-        
 
     print(f"\n" + "=" * 100)
     print("PIPELINE COMPLETED SUCCESSFULLY!")

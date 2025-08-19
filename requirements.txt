@@ -14,3 +14,4 @@ tqdm>=4.64.0
 plotly>=5.0.0
 jupyter>=1.0.0
 ipykernel>=6.0.0
+pyLDAvis>=3.3.1

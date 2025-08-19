@@ -1,4 +1,0 @@
-- cache modal, steps
-- simplify modal
-- stopword might include negative or positive words
-- tracking việc các tham số ảnh hưởng như thế nào đến kết quả các thuật toán, giúp tôi thêm một bước vào in report là thêm 1 dòng vào file history_train.csv, file này sẽ chứa nhận kí thay đổi các tham số và kết quả training tương ứng của các modal.
