@@ -17,6 +17,7 @@ import pyLDAvis.gensim_models as gensimvis
 import warnings
 warnings.filterwarnings('ignore')
 from wordcloud import WordCloud
+import os
 
 # Import PreProcessor từ file của bạn
 from pre_processor import PreProcessor
@@ -388,6 +389,59 @@ class GensimLDA:
             plt.xticks(rotation=45)
             plt.show()    
 
+    def save_model_components(self, path="models/gensim_lda_model"):
+        """
+        Saves the LDA model, dictionary, and bigram/trigram models.
+        """
+        os.makedirs(path, exist_ok=True) # Create directory if it doesn't exist
+        print(f"LDA model saving...")
+
+        if self.lda_model:
+            self.lda_model.save(os.path.join(path, "lda_model"))
+            print(f"LDA model saved to {os.path.join(path, 'lda_model')}")
+        if self.dictionary:
+            self.dictionary.save(os.path.join(path, "dictionary.gensim"))
+            print(f"Dictionary saved to {os.path.join(path, 'dictionary.gensim')}")
+        if self.bigram:
+            self.bigram.save(os.path.join(path, "bigram_model"))
+            print(f"Bigram model saved to {os.path.join(path, 'bigram_model')}")
+        if self.trigram:
+            self.trigram.save(os.path.join(path, "trigram_model"))
+            print(f"Trigram model saved to {os.path.join(path, 'trigram_model')}")
+
+    def load_model_components(self, path="models/gensim_lda_model"):
+        """
+        Loads the LDA model, dictionary, and bigram/trigram models.
+        """
+        try:
+            self.lda_model = LdaModel.load(os.path.join(path, "lda_model"))
+            print(f"LDA model loaded from {os.path.join(path, 'lda_model')}")
+        except FileNotFoundError:
+            print(f"LDA model not found at {os.path.join(path, 'lda_model')}")
+            self.lda_model = None
+
+        try:
+            self.dictionary = corpora.Dictionary.load(os.path.join(path, "dictionary.gensim"))
+            print(f"Dictionary loaded from {os.path.join(path, 'dictionary.gensim')}")
+        except FileNotFoundError:
+            print(f"Dictionary not found at {os.path.join(path, 'dictionary.gensim')}")
+            self.dictionary = None
+
+        try:
+            self.bigram = Phrases.load(os.path.join(path, "bigram_model"))
+            print(f"Bigram model loaded from {os.path.join(path, 'bigram_model')}")
+        except FileNotFoundError:
+            print(f"Bigram model not found at {os.path.join(path, 'bigram_model')}")
+            self.bigram = None
+
+        try:
+            self.trigram = Phrases.load(os.path.join(path, "trigram_model"))
+            print(f"Trigram model loaded from {os.path.join(path, 'trigram_model')}")
+        except FileNotFoundError:
+            print(f"Trigram model not found at {os.path.join(path, 'trigram_model')}")
+            self.trigram = None
+
+
 def run_lda_analysis(train_df, sample_size=50000, find_optimal=False, fixed_topics=15):
     """
     Main function to run complete LDA analysis
@@ -446,6 +500,8 @@ def run_lda_analysis(train_df, sample_size=50000, find_optimal=False, fixed_topi
     
     lda.plot_top_words(num_words=10)
     lda.plot_wordclouds(num_words=30)
+
+    lda.save_model_components(path="models/gensim_lda_model")
 
     # Final metrics
     print("\n" + "="*60)
