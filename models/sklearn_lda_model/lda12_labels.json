@@ -1,0 +1,243 @@
+[
+  {
+    "topic_index": 0,
+    "label": "movies_tv",
+    "score": 1.9,
+    "top_words": [
+      "movi",
+      "film",
+      "watch",
+      "good",
+      "one",
+      "great",
+      "see",
+      "like",
+      "scene",
+      "act"
+    ],
+    "matched_keywords": [
+      "movi",
+      "film"
+    ]
+  },
+  {
+    "topic_index": 1,
+    "label": "movies_tv",
+    "score": 1.0,
+    "top_words": [
+      "dvd",
+      "version",
+      "origin",
+      "perform",
+      "qualiti",
+      "your",
+      "disc",
+      "pictur",
+      "unit",
+      "collect"
+    ],
+    "matched_keywords": [
+      "dvd"
+    ]
+  },
+  {
+    "topic_index": 2,
+    "label": "electronics",
+    "score": 2.6,
+    "top_words": [
+      "work",
+      "batteri",
+      "camera",
+      "problem",
+      "comput",
+      "car",
+      "dog",
+      "phone",
+      "instal",
+      "card"
+    ],
+    "matched_keywords": [
+      "batteri",
+      "camera",
+      "comput",
+      "phone"
+    ]
+  },
+  {
+    "topic_index": 3,
+    "label": "year / one / still",
+    "score": 0.0,
+    "top_words": [
+      "year",
+      "one",
+      "still",
+      "time",
+      "record",
+      "ive",
+      "first",
+      "edit",
+      "im",
+      "best"
+    ],
+    "matched_keywords": []
+  },
+  {
+    "topic_index": 4,
+    "label": "use / help / need",
+    "score": 0.0,
+    "top_words": [
+      "use",
+      "help",
+      "need",
+      "make",
+      "work",
+      "review",
+      "way",
+      "inform",
+      "cover",
+      "learn"
+    ],
+    "matched_keywords": []
+  },
+  {
+    "topic_index": 5,
+    "label": "books",
+    "score": 1.8,
+    "top_words": [
+      "stori",
+      "charact",
+      "end",
+      "life",
+      "plot",
+      "world",
+      "real",
+      "one",
+      "novel",
+      "seri"
+    ],
+    "matched_keywords": [
+      "stori",
+      "plot",
+      "novel"
+    ]
+  },
+  {
+    "topic_index": 6,
+    "label": "toys_games",
+    "score": 0.9,
+    "top_words": [
+      "design",
+      "toy",
+      "women",
+      "child",
+      "fall",
+      "doesnt",
+      "littl",
+      "thank",
+      "space",
+      "five"
+    ],
+    "matched_keywords": [
+      "toy"
+    ]
+  },
+  {
+    "topic_index": 7,
+    "label": "books",
+    "score": 2.5999999999999996,
+    "top_words": [
+      "book",
+      "read",
+      "great",
+      "author",
+      "good",
+      "one",
+      "page",
+      "like",
+      "would",
+      "time"
+    ],
+    "matched_keywords": [
+      "book",
+      "read",
+      "author"
+    ]
+  },
+  {
+    "topic_index": 8,
+    "label": "music",
+    "score": 3.0999999999999996,
+    "top_words": [
+      "album",
+      "song",
+      "cd",
+      "music",
+      "listen",
+      "sound",
+      "great",
+      "best",
+      "track",
+      "like"
+    ],
+    "matched_keywords": [
+      "album",
+      "song",
+      "music",
+      "sound"
+    ]
+  },
+  {
+    "topic_index": 9,
+    "label": "use / product / great",
+    "score": 0.0,
+    "top_words": [
+      "use",
+      "product",
+      "great",
+      "one",
+      "good",
+      "would",
+      "work",
+      "bought",
+      "price",
+      "buy"
+    ],
+    "matched_keywords": []
+  },
+  {
+    "topic_index": 10,
+    "label": "show / great / band",
+    "score": 0.0,
+    "top_words": [
+      "show",
+      "great",
+      "band",
+      "love",
+      "case",
+      "amaz",
+      "special",
+      "effect",
+      "perfect",
+      "saw"
+    ],
+    "matched_keywords": []
+  },
+  {
+    "topic_index": 11,
+    "label": "like / get / dont",
+    "score": 0.0,
+    "top_words": [
+      "like",
+      "get",
+      "dont",
+      "realli",
+      "one",
+      "time",
+      "think",
+      "even",
+      "would",
+      "go"
+    ],
+    "matched_keywords": []
+  }
+]
