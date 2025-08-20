@@ -7,7 +7,7 @@ def main():
 
     # Load configuration with proper path
     script_dir = Path(__file__).parent
-    config_path = script_dir / "configs" / "balanced_config.json"
+    config_path = script_dir / "configs" / "accuracy_optimized_config.json"
     config = load_json_config(str(config_path))
 
     CONFIG = {
