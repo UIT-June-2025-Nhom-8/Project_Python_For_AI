@@ -4,7 +4,7 @@ import json
 def load_json_config(config_file):
     """Load configuration from JSON file"""
     try:
-        with open(config_file, 'r', encoding='utf-8') as f:
+        with open(config_file, "r", encoding="utf-8") as f:
             config = json.load(f)
         print(f"✅ Configuration loaded from: {config_file}")
         return config

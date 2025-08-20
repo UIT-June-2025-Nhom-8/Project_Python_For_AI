@@ -142,6 +142,7 @@ class KaggleDataLoader:
         )
 
         def smart_combine(title, text):
+            """Smart combination of title and text"""
             title_clean = str(title).strip()
             text_clean = str(text).strip()
 
