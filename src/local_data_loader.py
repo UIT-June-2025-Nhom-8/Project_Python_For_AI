@@ -10,8 +10,8 @@ class LocalDataLoader:
     def prepare_dataframes(self, data_root=".."):
         """Load data from local and prepare for pipeline"""
         # Load data
-        train_df = pd.read_csv(f"{data_root}/amazon_reviews/train.csv")
-        test_df = pd.read_csv(f"{data_root}/amazon_reviews/test.csv")
+        train_df = pd.read_csv(f"{data_root}/data/amazon_reviews/train.csv")
+        test_df = pd.read_csv(f"{data_root}/data/amazon_reviews/test.csv")
 
         # Set column names
         train_df.columns = ["label", "title", "text"]
