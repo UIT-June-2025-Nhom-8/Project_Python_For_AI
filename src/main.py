@@ -195,7 +195,7 @@ def main():
     print(f"   - y_test: {test_df['label'].shape}")
     print(f"=" * 60)
 
-    # Import và khởi tạo ModelTrainer
+    # Import and initialize ModelTrainer
     from model_trainer import ModelTrainer
 
     print(f"\n=== STARTING CONFIGURATION-DRIVEN TRAINING PIPELINE ===")
@@ -203,7 +203,7 @@ def main():
     # Initialize ModelTrainer
     model_trainer = ModelTrainer(output_dir="reports")
 
-    # Tối ưu hóa cho MAXIMUM ACCURACY (chấp nhận training time lâu hơn) - Fallback params
+    # Optimize for MAXIMUM ACCURACY (accept longer training time) - Fallback params
     # Run training pipeline with configuration
     if config:
         print("Using JSON configuration-driven training")
@@ -253,7 +253,7 @@ def main():
     print("=== GENSIM LDA TOPIC MODELING ===")
     print("=" * 60)
 
-    # Analyze với 50k samples
+    # Analyze with samples from test set
     lda, lda_metrics = run_lda_analysis(
         train_df=train_df_gensimLDA,
         sample_size=CONFIG["train_size"],
@@ -261,7 +261,7 @@ def main():
         fixed_topics=11,
     )
 
-    # In kết quả vào final summary
+    # Print results to final summary
 
     print(f"\nLDA Topic Modeling Results:")
     print("=" * 60)
@@ -276,17 +276,17 @@ def main():
     ####### SKLEARN LDA TOPIC MODELING ########
     print(f"\n=== SKLEARN LDA TOPIC MODELING ===")
 
-    # Danh sách n_topics cần thử
+    # List of n_topics to try
     n_topics_list = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 
-    # Tùy chọn: tham số CountVectorizer để cải thiện topic
+    # Optional: CountVectorizer parameters to improve topics
     vectorizer_params = {
-        "max_features": 20000,  # tăng vocab cho tập lớn
-        "min_df": 5,  # bỏ từ quá hiếm
-        "max_df": 0.7,  # bỏ từ quá phổ biến
+        "max_features": 20000,  # increase vocab for large dataset
+        "min_df": 5,  # remove rare words
+        "max_df": 0.7,  # remove common words
     }
 
-    # tham số LDA chung
+    # Common LDA parameters
     base_params = {
         "max_iter": 20,
         "learning_method": "online",
