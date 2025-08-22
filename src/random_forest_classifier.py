@@ -176,26 +176,9 @@ class RandomForestAnalyzer:
         print(f"Label classes: {self.label_encoder.classes_}")
 
     def _initialize_model(self):
-        """Initialize model with params"""
-        model_params = {
-            "n_estimators": self.model_params["n_estimators"],
-            "max_depth": self.model_params["max_depth"],
-            "min_samples_split": self.model_params["min_samples_split"],
-            "min_samples_leaf": self.model_params["min_samples_leaf"],
-            "random_state": self.model_params["random_state"],
-            "n_jobs": self.model_params.get(
-                "n_jobs", -1
-            ),  # Default -1 if not specified
-            "bootstrap": self.model_params.get("bootstrap", True),  # Default True
-            "max_features": self.model_params.get(
-                "max_features", "sqrt"
-            ),  # Use sqrt for RandomForest (not from TF-IDF max_features)
-            "class_weight": self.model_params.get(
-                "class_weight", "balanced"
-            ),  # Default 'balanced'
-        }
-
-        self.model = RandomForestClassifier(**model_params)
+        """Initialize model with ALL params from config"""
+        # Use all parameters from self.model_params - this allows full control from config
+        self.model = RandomForestClassifier(**self.model_params)
 
     def _train_model(self):
         """Train model and calculate metrics"""

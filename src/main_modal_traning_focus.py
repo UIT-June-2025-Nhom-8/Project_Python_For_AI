@@ -39,16 +39,6 @@ def main():
         )
     )
 
-    print("Processing test data with sentiment-aware preprocessing...")
-    test_df = preprocessor.clean_data(test_df.copy())
-    test_df = preprocessor.remove_duplicates(test_df)
-    # Use efficient pipeline method that combines cleaning, tokenization, stopword removal and normalization
-    test_df = test_df.assign(
-        normalized_input=test_df["input"].apply(
-            lambda x: preprocessor.preprocess_for_sentiment(x, preserve_negation=True)
-        )
-    )
-
     # Import and initialize ModelTrainer
     from model_trainer import ModelTrainer
 

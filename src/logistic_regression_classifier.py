@@ -171,18 +171,9 @@ class LogisticRegressionAnalyzer:
         print(f"Label classes: {self.label_encoder.classes_}")
 
     def _initialize_model(self):
-        """Initialize model with params"""
-        model_params = {
-            "C": self.model_params["C"],
-            "max_iter": self.model_params["max_iter"],
-            "solver": self.model_params["solver"],
-            "random_state": self.model_params["random_state"],
-            "class_weight": self.model_params.get(
-                "class_weight", None
-            ),  # Add class_weight if available
-        }
-
-        self.model = LogisticRegression(**model_params)
+        """Initialize model with ALL params from config"""
+        # Use all parameters from self.model_params - this allows full control from config
+        self.model = LogisticRegression(**self.model_params)
 
     def _train_model(self):
         """Train model and calculate metrics"""

@@ -170,20 +170,9 @@ class GradientBoostingAnalyzer:
         print(f"Label classes: {self.label_encoder.classes_}")
 
     def _initialize_model(self):
-        """Initialize model with model_params"""
-        model_params = {
-            "n_estimators": self.model_params["n_estimators"],
-            "learning_rate": self.model_params["learning_rate"],
-            "max_depth": self.model_params["max_depth"],
-            "random_state": self.model_params["random_state"],
-            "subsample": self.model_params.get("subsample", 0.8),
-            "validation_fraction": self.model_params.get("validation_fraction", 0.1),
-            "n_iter_no_change": self.model_params.get("n_iter_no_change", 10),
-            "tol": self.model_params.get("tol", 1e-4),  # Default 1e-4
-            "max_features": self.model_params.get("max_features", "sqrt"),
-        }
-
-        self.model = GradientBoostingClassifier(**model_params)
+        """Initialize model with ALL params from config"""
+        # Use all parameters from self.model_params - this allows full control from config
+        self.model = GradientBoostingClassifier(**self.model_params)
 
     def _train_model(self):
         """Train model and calculate metrics"""
