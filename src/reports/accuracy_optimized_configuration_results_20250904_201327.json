@@ -1,0 +1,316 @@
+{
+  "config_info": {
+    "name": "Accuracy Optimized Configuration",
+    "description": "Tối ưu hóa cho độ chính xác cao nhất với Amazon Reviews 500k samples",
+    "target_dataset_size": 1000000,
+    "expected_training_time": "2-3 hours",
+    "memory_requirement": "8GB RAM",
+    "priority": "Accuracy > Speed"
+  },
+  "training_summary": {
+    "total_time_seconds": 207.41,
+    "total_time_minutes": 3.46,
+    "train_dataset_size": 200000,
+    "test_dataset_size": 20000,
+    "timestamp": "2025-09-04T20:13:27.108488"
+  },
+  "model_results": {
+    "logistic_regression": {
+      "model_name": "LogisticRegression",
+      "model_params": {
+        "C": 1.5,
+        "max_iter": 2000,
+        "solver": "liblinear",
+        "random_state": 42,
+        "class_weight": "balanced"
+      },
+      "tfidf_params": {
+        "max_features": 40000,
+        "stop_words": null,
+        "ngram_range": [
+          1,
+          3
+        ],
+        "min_df": 3,
+        "max_df": 0.88,
+        "sublinear_tf": true,
+        "lowercase": true,
+        "strip_accents": "unicode"
+      },
+      "train_accuracy": 0.9411,
+      "test_accuracy": 0.9178,
+      "overfitting_score": 0.0233,
+      "f1_macro": 0.9177,
+      "f1_weighted": 0.9178,
+      "classification_report": {
+        "1": {
+          "precision": 0.9198638613861386,
+          "recall": 0.9114040465971797,
+          "f1-score": 0.9156144133045888,
+          "support": 9786.0
+        },
+        "2": {
+          "precision": 0.9158579192546584,
+          "recall": 0.9239279420403368,
+          "f1-score": 0.9198752315040453,
+          "support": 10214.0
+        },
+        "accuracy": 0.9178,
+        "macro avg": {
+          "precision": 0.9178608903203985,
+          "recall": 0.9176659943187582,
+          "f1-score": 0.917744822404317,
+          "support": 20000.0
+        },
+        "weighted avg": {
+          "precision": 0.9178180267395918,
+          "recall": 0.9178,
+          "f1-score": 0.9177904131590512,
+          "support": 20000.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          8919,
+          867
+        ],
+        [
+          777,
+          9437
+        ]
+      ],
+      "training_time": 58.44,
+      "model_config": {
+        "model_params": {
+          "C": 1.5,
+          "max_iter": 2000,
+          "solver": "liblinear",
+          "class_weight": "balanced",
+          "random_state": 42
+        },
+        "tfidf_params": {
+          "max_features": 40000,
+          "ngram_range": [
+            1,
+            3
+          ],
+          "min_df": 3,
+          "max_df": 0.88,
+          "sublinear_tf": true,
+          "stop_words": null,
+          "lowercase": true,
+          "strip_accents": "unicode"
+        },
+        "training_params": {
+          "test_size": 0.15,
+          "stratify": true
+        }
+      },
+      "config_name": "Accuracy Optimized Configuration"
+    },
+    "random_forest": {
+      "model_name": "RandomForestClassifier",
+      "model_params": {
+        "n_estimators": 300,
+        "max_depth": 30,
+        "min_samples_split": 3,
+        "min_samples_leaf": 1,
+        "max_features": "sqrt",
+        "random_state": 42,
+        "bootstrap": true,
+        "oob_score": true,
+        "class_weight": "balanced",
+        "n_jobs": -1
+      },
+      "tfidf_params": {
+        "max_features": 15000,
+        "stop_words": null,
+        "ngram_range": [
+          1,
+          3
+        ],
+        "min_df": 3,
+        "max_df": 0.88,
+        "sublinear_tf": true,
+        "lowercase": true,
+        "strip_accents": "unicode"
+      },
+      "train_accuracy": 0.8891,
+      "test_accuracy": 0.8543,
+      "overfitting_score": 0.0348,
+      "f1_macro": 0.854,
+      "f1_weighted": 0.8541,
+      "classification_report": {
+        "1": {
+          "precision": 0.8719419787832864,
+          "recall": 0.8231146535867566,
+          "f1-score": 0.846825063078217,
+          "support": 9786.0
+        },
+        "2": {
+          "precision": 0.8391562906522951,
+          "recall": 0.884178578421774,
+          "f1-score": 0.8610793287566743,
+          "support": 10214.0
+        },
+        "accuracy": 0.8543,
+        "macro avg": {
+          "precision": 0.8555491347177908,
+          "recall": 0.8536466160042653,
+          "f1-score": 0.8539521959174456,
+          "support": 20000.0
+        },
+        "weighted avg": {
+          "precision": 0.8551983278547892,
+          "recall": 0.8543,
+          "f1-score": 0.854104716560205,
+          "support": 20000.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          8055,
+          1731
+        ],
+        [
+          1183,
+          9031
+        ]
+      ],
+      "training_time": 78.28,
+      "model_config": {
+        "model_params": {
+          "n_estimators": 300,
+          "max_depth": 30,
+          "min_samples_split": 3,
+          "min_samples_leaf": 1,
+          "max_features": "sqrt",
+          "bootstrap": true,
+          "oob_score": true,
+          "class_weight": "balanced",
+          "random_state": 42,
+          "n_jobs": -1
+        },
+        "tfidf_params": {
+          "max_features": 15000,
+          "ngram_range": [
+            1,
+            3
+          ],
+          "min_df": 3,
+          "max_df": 0.88,
+          "sublinear_tf": true,
+          "stop_words": null,
+          "lowercase": true,
+          "strip_accents": "unicode"
+        },
+        "training_params": {
+          "test_size": 0.15,
+          "stratify": true
+        }
+      },
+      "config_name": "Accuracy Optimized Configuration"
+    },
+    "gradient_boosting": {
+      "model_name": "GradientBoostingClassifier",
+      "model_params": {
+        "n_estimators": 300,
+        "learning_rate": 0.08,
+        "max_depth": 6,
+        "max_features": "sqrt",
+        "random_state": 42,
+        "subsample": 0.85,
+        "validation_fraction": 0.1,
+        "n_iter_no_change": 15,
+        "tol": 0.0001
+      },
+      "tfidf_params": {
+        "max_features": 10000,
+        "stop_words": null,
+        "ngram_range": [
+          1,
+          3
+        ],
+        "min_df": 3,
+        "max_df": 0.88,
+        "sublinear_tf": true,
+        "lowercase": true,
+        "strip_accents": "unicode"
+      },
+      "train_accuracy": 0.8723,
+      "test_accuracy": 0.8633,
+      "overfitting_score": 0.009,
+      "f1_macro": 0.863,
+      "f1_weighted": 0.8632,
+      "classification_report": {
+        "1": {
+          "precision": 0.8783261802575107,
+          "recall": 0.8365011240547722,
+          "f1-score": 0.8569035904951324,
+          "support": 9786.0
+        },
+        "2": {
+          "precision": 0.850187265917603,
+          "recall": 0.8889759154102213,
+          "f1-score": 0.8691490380013401,
+          "support": 10214.0
+        },
+        "accuracy": 0.8633,
+        "macro avg": {
+          "precision": 0.8642567230875569,
+          "recall": 0.8627385197324967,
+          "f1-score": 0.8630263142482363,
+          "support": 20000.0
+        },
+        "weighted avg": {
+          "precision": 0.8639556367041198,
+          "recall": 0.8633,
+          "f1-score": 0.8631573405365527,
+          "support": 20000.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          8186,
+          1600
+        ],
+        [
+          1134,
+          9080
+        ]
+      ],
+      "training_time": 70.41,
+      "model_config": {
+        "model_params": {
+          "n_estimators": 300,
+          "learning_rate": 0.08,
+          "max_depth": 6,
+          "subsample": 0.85,
+          "max_features": "sqrt",
+          "validation_fraction": 0.1,
+          "n_iter_no_change": 15,
+          "tol": 0.0001,
+          "random_state": 42
+        },
+        "tfidf_params": {
+          "max_features": 10000,
+          "ngram_range": [
+            1,
+            3
+          ],
+          "min_df": 3,
+          "max_df": 0.88,
+          "sublinear_tf": true,
+          "stop_words": null,
+          "lowercase": true,
+          "strip_accents": "unicode"
+        },
+        "training_params": {
+          "test_size": 0.15,
+          "stratify": true
+        }
+      },
+      "config_name": "Accuracy Optimized Configuration"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+[build]
+  functions = "."
+
+[functions]
+  python_version = "3.11"
+
+[[functions]]
+  name = "app"
+  runtime = "python3.11"
