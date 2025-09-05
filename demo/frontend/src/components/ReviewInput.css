@@ -202,6 +202,72 @@
   border: 1px solid #dee2e6;
 }
 
+.backend-instructions code {
+  background-color: #f8f9fa;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.8rem;
+  border: 1px solid #dee2e6;
+}
+
+/* Model Selection Styles */
+.model-selection {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.model-selection h3 {
+  margin: 0 0 0.75rem 0;
+  color: #495057;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.model-selectors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.model-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.model-selector label {
+  font-weight: 500;
+  color: #495057;
+  font-size: 0.875rem;
+}
+
+.model-select {
+  padding: 0.5rem;
+  border: 2px solid #dee2e6;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.875rem;
+  background-color: white;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.model-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.model-select:disabled {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 @media (max-width: 768px) {
   .review-input {
     padding: 1rem;
@@ -224,5 +290,13 @@
   .analyze-button {
     align-self: stretch;
     min-width: auto;
+  }
+
+  .model-selectors {
+    grid-template-columns: 1fr;
+  }
+
+  .model-selection {
+    padding: 0.75rem;
   }
 }

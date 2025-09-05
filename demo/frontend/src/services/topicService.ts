@@ -10,15 +10,20 @@ export class TopicAnalysisError extends APIError {
 }
 
 // Real topic detection using the trained Gensim LDA model - backend only
-export const detectTopics = async (text: string): Promise<TopicDetection> => {
+export const detectTopics = async (text: string, modelKey?: string): Promise<TopicDetection> => {
   if (!text || text.trim().length === 0) {
     throw new TopicAnalysisError('Text is required for topic detection');
   }
 
   try {
+    const requestBody: any = { text: text.trim() };
+    if (modelKey) {
+      requestBody.model = modelKey;
+    }
+
     const data = await makeAPIRequest<any>('/analyze/topics', {
       method: 'POST',
-      body: JSON.stringify({ text: text.trim() })
+      body: JSON.stringify(requestBody)
     });
     
     // Validate the response structure
@@ -37,8 +42,10 @@ export const detectTopics = async (text: string): Promise<TopicDetection> => {
       dominant_topic: {
         id: data.dominant_topic.id,
         name: data.dominant_topic.name,
-        probability: data.dominant_topic.probability
-      }
+        probability: data.dominant_topic.probability,
+        words: data.dominant_topic.words
+      },
+      model_used: data.model_used
     };
     
   } catch (error) {

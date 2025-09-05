@@ -10,7 +10,7 @@
   
   "dataset_config": {
     "train_size": 200000,
-    "test_size": 20000,
+    "test_size": 100000,
     "validation_split": 0.1,
     "random_state": 42
   },

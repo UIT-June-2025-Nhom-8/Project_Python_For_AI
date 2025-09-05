@@ -1,17 +1,45 @@
-pandas>=1.5.0
-numpy>=1.21.0
-scikit-learn>=1.1.0
-nltk>=3.7
-gensim>=4.2.0
-lightgbm>=3.3.0
+# Core Data Science and ML Libraries
+pandas>=2.0.0
+numpy>=1.24.0
+scikit-learn>=1.7.0
+scipy>=1.13.0
+joblib>=1.5.0
+
+# Natural Language Processing
+nltk>=3.8.1
+gensim>=4.3.0
 vaderSentiment>=3.3.0
+
+# Machine Learning - Specialized
+lightgbm>=4.6.0
+
+# Visualization
+matplotlib>=3.10.0
+seaborn>=0.13.0
 wordcloud>=1.9.0
-matplotlib>=3.5.0
-seaborn>=0.11.0
+plotly>=6.0.0
+pyLDAvis>=3.4.0
+
+# Web Framework for Backend API
+Flask>=3.1.2
+Flask-CORS>=6.0.1
+
+# Data Sources
 kaggle>=1.5.0
-kagglehub
-tqdm>=4.64.0
-plotly>=5.0.0
-jupyter>=1.0.0
-ipykernel>=6.0.0
-pyLDAvis>=3.3.1
+kagglehub>=0.3.0
+
+# Jupyter and Interactive Development
+jupyter>=1.1.0
+ipykernel>=6.30.0
+jupyterlab>=4.4.0
+notebook>=7.4.0
+
+# Utilities
+tqdm>=4.67.0
+smart-open>=7.0.0
+python-dateutil>=2.9.0
+requests>=2.32.0
+
+# Development and Testing
+Pillow>=11.0.0
+PyYAML>=6.0.0

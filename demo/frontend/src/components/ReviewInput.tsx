@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Review } from '../types/Review';
+import { Review, ModelListResponse, ModelInfo } from '../types/Review';
 import { analyzeSentiment, SentimentAnalysisError, checkSentimentAPIHealth } from '../services/sentimentService';
 import { detectTopics, TopicAnalysisError, checkTopicAPIHealth } from '../services/topicService';
+import { getAvailableModels, ModelServiceError } from '../services/modelService';
 import './ReviewInput.css';
 
 interface ReviewInputProps {
@@ -14,11 +15,43 @@ const ReviewInput: React.FC<ReviewInputProps> = ({ onAddReview }) => {
   const [error, setError] = useState<string | null>(null);
   const [isBackendHealthy, setIsBackendHealthy] = useState<boolean | null>(null);
   const [isCheckingHealth, setIsCheckingHealth] = useState(false);
+  
+  // Model selection state
+  const [availableModels, setAvailableModels] = useState<ModelListResponse | null>(null);
+  const [selectedSentimentModel, setSelectedSentimentModel] = useState<string>('');
+  const [selectedTopicModel, setSelectedTopicModel] = useState<string>('');
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
 
   // Check backend health on component mount
   useEffect(() => {
     checkBackendHealth();
+    loadAvailableModels();
   }, []);
+
+  const loadAvailableModels = async () => {
+    setIsLoadingModels(true);
+    try {
+      const models = await getAvailableModels();
+      setAvailableModels(models);
+      
+      // Set default selections
+      if (models.current_sentiment_model) {
+        setSelectedSentimentModel(models.current_sentiment_model);
+      }
+      if (models.current_topic_model) {
+        setSelectedTopicModel(models.current_topic_model);
+      }
+      
+    } catch (error) {
+      console.error('Error loading models:', error);
+      if (error instanceof ModelServiceError && !error.isNetworkError) {
+        // Only set error if it's not a network error (which would be handled by health check)
+        setError(`Failed to load available models: ${error.message}`);
+      }
+    } finally {
+      setIsLoadingModels(false);
+    }
+  };
 
   const checkBackendHealth = async () => {
     setIsCheckingHealth(true);
@@ -27,7 +60,13 @@ const ReviewInput: React.FC<ReviewInputProps> = ({ onAddReview }) => {
         checkSentimentAPIHealth(),
         checkTopicAPIHealth()
       ]);
-      setIsBackendHealthy(sentimentHealthy && topicHealthy);
+      const isHealthy = sentimentHealthy && topicHealthy;
+      setIsBackendHealthy(isHealthy);
+      
+      // If backend becomes healthy and we don't have models, try to load them
+      if (isHealthy && !availableModels) {
+        loadAvailableModels();
+      }
     } catch {
       setIsBackendHealthy(false);
     } finally {
@@ -54,8 +93,8 @@ const ReviewInput: React.FC<ReviewInputProps> = ({ onAddReview }) => {
     try {
       // Make both API calls and wait for both to complete
       const [sentiment, topics] = await Promise.all([
-        analyzeSentiment(text),
-        detectTopics(text)
+        analyzeSentiment(text, selectedSentimentModel || undefined),
+        detectTopics(text, selectedTopicModel || undefined)
       ]);
       
       const newReview: Review = {
@@ -120,6 +159,48 @@ const ReviewInput: React.FC<ReviewInputProps> = ({ onAddReview }) => {
           </button>
         </div>
       </div>
+
+      {/* Model Selection Section */}
+      {isBackendHealthy && availableModels && (
+        <div className="model-selection">
+          <h3>Select Analysis Models</h3>
+          <div className="model-selectors">
+            <div className="model-selector">
+              <label htmlFor="sentiment-model">Sentiment Analysis Model:</label>
+              <select
+                id="sentiment-model"
+                value={selectedSentimentModel}
+                onChange={(e) => setSelectedSentimentModel(e.target.value)}
+                disabled={isAnalyzing || isLoadingModels}
+                className="model-select"
+              >
+                {availableModels.sentiment_models.map((model) => (
+                  <option key={model.key} value={model.key}>
+                    {model.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="model-selector">
+              <label htmlFor="topic-model">Topic Detection Model:</label>
+              <select
+                id="topic-model"
+                value={selectedTopicModel}
+                onChange={(e) => setSelectedTopicModel(e.target.value)}
+                disabled={isAnalyzing || isLoadingModels}
+                className="model-select"
+              >
+                {availableModels.topic_models.map((model) => (
+                  <option key={model.key} value={model.key}>
+                    {model.name} ({model.num_topics} topics)
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
       
       <form onSubmit={handleSubmit} className="review-form">
         <textarea

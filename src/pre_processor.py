@@ -251,6 +251,31 @@ class PreProcessor:
         filtered_tokens = [token for token in tokens if token.lower() not in SENTIMENT_STOPWORDS]
         return filtered_tokens
 
+    def remove_stopwords_preserve_negation(self, tokens):
+        """
+        Remove stopwords but preserve negation tokens (starting with 'not_') and sentiment-critical terms.
+        This method is specifically designed for post-negation processing.
+
+        Args:
+            tokens (list): List of tokens to be processed.
+
+        Returns:
+            list: List of tokens after removing non-essential stopwords while preserving negation.
+        """
+        if not isinstance(tokens, list):
+            return []
+        
+        filtered_tokens = []
+        for token in tokens:
+            # Always keep negation tokens (starting with "not_")
+            if token.startswith('not_'):
+                filtered_tokens.append(token)
+            # Keep other tokens if they're not in stopwords
+            elif token.lower() not in SENTIMENT_STOPWORDS:
+                filtered_tokens.append(token)
+        
+        return filtered_tokens
+
     def normalize_token(self, tokens):
         """
         Normalize tokens using lemmatization (preferred) or stemming.
@@ -306,9 +331,11 @@ class PreProcessor:
         # Handle negation explicitly if requested
         if preserve_negation:
             tokens = self._handle_negation_tokens(tokens)
-        
-        # Remove stopwords but keep sentiment-critical words
-        tokens = self.remove_stopwords(tokens)
+            # Use special stopword removal that preserves negation tokens
+            tokens = self.remove_stopwords_preserve_negation(tokens)
+        else:
+            # Standard stopword removal if negation is not preserved
+            tokens = self.remove_stopwords(tokens)
         
         # Normalize (lemmatize preferred for sentiment)
         tokens = self.normalize_token(tokens)
@@ -370,7 +397,8 @@ class PreProcessor:
         negation_words = {"not", "no", "never", "none", "neither", "nor", "nothing", "nowhere", 
                          "dont", "doesn't", "didn't", "isn't", "aren't", "wasn't", "weren't",
                          "won't", "wouldn't", "haven't", "hasn't", "hadn't", "can't", "couldn't",
-                         "shouldn't", "mustn't", "needn't"}
+                         "shouldn't", "mustn't", "needn't", "cant", "wont", "havent", "hasnt",
+                         "hadnt", "couldnt", "shouldnt", "mustnt", "neednt", "aint"}
         
         if not isinstance(tokens, list):
             return []
@@ -397,3 +425,77 @@ class PreProcessor:
                 i += 1
                 
         return result
+
+    def test_negation_handling(self, test_phrases=None, debug=True):
+        """
+        Test method to verify negation handling works correctly.
+        
+        Args:
+            test_phrases (list): List of test phrases, if None uses default test cases
+            debug (bool): Whether to print detailed processing steps
+            
+        Returns:
+            dict: Test results showing input -> output mappings
+        """
+        if test_phrases is None:
+            test_phrases = [
+                "not bad",
+                "not good", 
+                "this is not bad",
+                "not really good",
+                "I don't like this",
+                "It's not very good",
+                "not so bad actually",
+                "good movie",
+                "bad service",
+                "never good",
+                "can't recommend"
+            ]
+        
+        results = {}
+        print("🧪 Testing Negation Handling...")
+        print("=" * 50)
+        
+        for phrase in test_phrases:
+            if debug:
+                print(f"\n📝 Testing: '{phrase}'")
+                print("-" * 30)
+            
+            # Step-by-step processing with debug info
+            cleaned = self.clean_text(phrase)
+            if debug:
+                print(f"After cleaning: '{cleaned}'")
+            
+            tokens = self.tokenize_text(cleaned)
+            if debug:
+                print(f"After tokenization: {tokens}")
+            
+            negation_tokens = self._handle_negation_tokens(tokens)
+            if debug:
+                print(f"After negation handling: {negation_tokens}")
+            
+            final_tokens = self.remove_stopwords_preserve_negation(negation_tokens)
+            if debug:
+                print(f"After stopword removal: {final_tokens}")
+            
+            normalized = self.normalize_token(final_tokens)
+            if debug:
+                print(f"Final normalized tokens: {normalized}")
+            
+            # Also test the complete pipeline
+            complete_result = self.preprocess_for_sentiment(phrase, preserve_negation=True)
+            
+            results[phrase] = {
+                'step_by_step': normalized,
+                'complete_pipeline': complete_result
+            }
+            
+            if debug:
+                print(f"✅ Complete pipeline result: {complete_result}")
+        
+        print("\n" + "=" * 50)
+        print("📊 Summary of Results:")
+        for phrase, result in results.items():
+            print(f"'{phrase}' -> {result['complete_pipeline']}")
+        
+        return results
