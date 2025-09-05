@@ -1,11 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 import ReviewInput from './components/ReviewInput';
 import ReviewDisplay from './components/ReviewDisplay';
-import { Review } from './types/Review';
+import { Review, ModelListResponse } from './types/Review';
+import { getAvailableModels } from './services/modelService';
 
 function App() {
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [availableModels, setAvailableModels] = useState<ModelListResponse | null>(null);
+
+  useEffect(() => {
+    loadAvailableModels();
+  }, []);
+
+  const loadAvailableModels = async () => {
+    try {
+      const models = await getAvailableModels();
+      setAvailableModels(models);
+    } catch (error) {
+      console.error('Error loading models for header:', error);
+      // Don't set error state here as it's not critical for app functionality
+    }
+  };
 
   const handleAddReview = (review: Review) => {
     setReviews(prev => [review, ...prev]);
@@ -22,9 +38,22 @@ function App() {
         <p>Advanced sentiment analysis and topic detection using trained ML models</p>
         <div className="app-description">
           <div className="feature-badges">
-            <span className="badge">Logistic Regression</span>
-            <span className="badge">Gensim LDA</span>
-            <span className="badge">Real-time Analysis</span>
+            {availableModels ? (
+              <>
+                <span className="badge">
+                  {availableModels.sentiment_models.length} Sentiment Model{availableModels.sentiment_models.length !== 1 ? 's' : ''}
+                </span>
+                <span className="badge">
+                  {availableModels.topic_models.length} Topic Model{availableModels.topic_models.length !== 1 ? 's' : ''}
+                </span>
+                <span className="badge">Real-time Analysis</span>
+              </>
+            ) : (
+              <>
+                <span className="badge">Loading Models...</span>
+                <span className="badge">Real-time Analysis</span>
+              </>
+            )}
           </div>
         </div>
       </header>

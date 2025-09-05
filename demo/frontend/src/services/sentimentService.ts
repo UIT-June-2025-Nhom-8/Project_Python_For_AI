@@ -10,15 +10,20 @@ export class SentimentAnalysisError extends APIError {
 }
 
 // Real sentiment analysis using the trained logistic regression model - backend only
-export const analyzeSentiment = async (text: string): Promise<SentimentAnalysis> => {
+export const analyzeSentiment = async (text: string, modelKey?: string): Promise<SentimentAnalysis> => {
   if (!text || text.trim().length === 0) {
     throw new SentimentAnalysisError('Text is required for sentiment analysis');
   }
 
   try {
+    const requestBody: any = { text: text.trim() };
+    if (modelKey) {
+      requestBody.model = modelKey;
+    }
+
     const data = await makeAPIRequest<any>('/analyze/sentiment', {
       method: 'POST',
-      body: JSON.stringify({ text: text.trim() })
+      body: JSON.stringify(requestBody)
     });
     
     // Validate the response structure
@@ -33,7 +38,8 @@ export const analyzeSentiment = async (text: string): Promise<SentimentAnalysis>
       probabilities: {
         positive: data.probabilities.positive || 0,
         negative: data.probabilities.negative || 0
-      }
+      },
+      model_used: data.model_used
     };
     
   } catch (error) {

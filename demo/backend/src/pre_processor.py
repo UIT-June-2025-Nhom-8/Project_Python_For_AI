@@ -148,6 +148,7 @@ class PreProcessor:
         - Sentiment-aware character filtering
         - Negation preservation
         - Emphasis preservation (repeated chars)
+        - Contraction handling for negation
 
         Args:
             text (str): Text string to be cleaned.
@@ -160,7 +161,32 @@ class PreProcessor:
 
         text = text.lower()
 
-        # Apply cleaning patterns first (without negation handling here)
+        # Handle contractions BEFORE other cleaning to preserve negation
+        contraction_patterns = [
+            (r"\bcan't\b", " cannot "),
+            (r"\bwon't\b", " will not "),
+            (r"\bdon't\b", " do not "),
+            (r"\bdoesn't\b", " does not "),
+            (r"\bdidn't\b", " did not "),
+            (r"\bisn't\b", " is not "),
+            (r"\baren't\b", " are not "),
+            (r"\bwasn't\b", " was not "),
+            (r"\bweren't\b", " were not "),
+            (r"\bwouldn't\b", " would not "),
+            (r"\bhaven't\b", " have not "),
+            (r"\bhasn't\b", " has not "),
+            (r"\bhadn't\b", " had not "),
+            (r"\bcouldn't\b", " could not "),
+            (r"\bshouldn't\b", " should not "),
+            (r"\bmustn't\b", " must not "),
+            (r"\bneedn't\b", " need not "),
+        ]
+        
+        # Apply contraction patterns first
+        for pattern, replacement in contraction_patterns:
+            text = re.sub(pattern, replacement, text)
+
+        # Apply cleaning patterns
         for pattern, replacement in self.CLEANING_PATTERNS:
             text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
         
@@ -251,6 +277,30 @@ class PreProcessor:
         filtered_tokens = [token for token in tokens if token.lower() not in SENTIMENT_STOPWORDS]
         return filtered_tokens
 
+    def remove_stopwords_preserve_negation(self, tokens):
+        """
+        Remove stopwords but preserve negation tokens and sentiment-critical terms.
+        
+        Args:
+            tokens (list): List of tokens to be processed.
+            
+        Returns:
+            list: List of tokens after removing non-essential stopwords while preserving negation.
+        """
+        if not isinstance(tokens, list):
+            return []
+        
+        filtered_tokens = []
+        for token in tokens:
+            # Always keep negation tokens (starting with "not_")
+            if token.startswith('not_'):
+                filtered_tokens.append(token)
+            # Keep other tokens if they're not in stopwords
+            elif token.lower() not in SENTIMENT_STOPWORDS:
+                filtered_tokens.append(token)
+        
+        return filtered_tokens
+
     def normalize_token(self, tokens):
         """
         Normalize tokens using lemmatization (preferred) or stemming.
@@ -307,8 +357,8 @@ class PreProcessor:
         if preserve_negation:
             tokens = self._handle_negation_tokens(tokens)
         
-        # Remove stopwords but keep sentiment-critical words
-        tokens = self.remove_stopwords(tokens)
+        # Remove stopwords but preserve negation tokens
+        tokens = self.remove_stopwords_preserve_negation(tokens)
         
         # Normalize (lemmatize preferred for sentiment)
         tokens = self.normalize_token(tokens)
@@ -360,6 +410,7 @@ class PreProcessor:
         """
         Handle negation by combining negation words with following tokens.
         e.g., ["not", "good"] -> ["not_good"]
+        Also handles contractions like "can't" -> ["not", "can"]
         
         Args:
             tokens (list): List of tokens
@@ -372,28 +423,101 @@ class PreProcessor:
                          "won't", "wouldn't", "haven't", "hasn't", "hadn't", "can't", "couldn't",
                          "shouldn't", "mustn't", "needn't"}
         
+        # Handle contractions that imply negation
+        contraction_map = {
+            "can't": ["not", "can"],
+            "won't": ["not", "will"],
+            "don't": ["not", "do"],
+            "doesn't": ["not", "does"],
+            "didn't": ["not", "did"],
+            "isn't": ["not", "is"],
+            "aren't": ["not", "are"],
+            "wasn't": ["not", "was"],
+            "weren't": ["not", "were"],
+            "wouldn't": ["not", "would"],
+            "haven't": ["not", "have"],
+            "hasn't": ["not", "has"],
+            "hadn't": ["not", "had"],
+            "couldn't": ["not", "could"],
+            "shouldn't": ["not", "should"],
+            "mustn't": ["not", "must"],
+            "needn't": ["not", "need"]
+        }
+        
         if not isinstance(tokens, list):
             return []
-            
+        
+        # First, expand contractions
+        expanded_tokens = []
+        for token in tokens:
+            if token.lower() in contraction_map:
+                expanded_tokens.extend(contraction_map[token.lower()])
+            else:
+                expanded_tokens.append(token)
+        
+        # Then handle negation combinations
         result = []
         i = 0
         
-        while i < len(tokens):
-            current_token = tokens[i].lower()
+        while i < len(expanded_tokens):
+            current_token = expanded_tokens[i].lower()
             
             # Check if current token is a negation word
-            if current_token in negation_words and i + 1 < len(tokens):
+            if current_token in negation_words and i + 1 < len(expanded_tokens):
                 # Combine negation with next meaningful word
-                next_token = tokens[i+1].lower()
+                next_token = expanded_tokens[i+1].lower()
                 if next_token.isalpha() and len(next_token) >= 2:
                     combined = f"not_{next_token}"
                     result.append(combined)
                     i += 2  # Skip both current and next token
                 else:
-                    result.append(tokens[i])
+                    result.append(expanded_tokens[i])
                     i += 1
             else:
-                result.append(tokens[i])
+                result.append(expanded_tokens[i])
                 i += 1
                 
         return result
+
+    def test_negation_handling(self, test_phrases=None, debug=True):
+        """
+        Test method to verify negation handling works correctly.
+        
+        Args:
+            test_phrases (list): Custom test phrases, uses defaults if None
+            debug (bool): Whether to print detailed debug information
+            
+        Returns:
+            dict: Test results showing original text and processed tokens
+        """
+        if test_phrases is None:
+            test_phrases = [
+                "not bad",
+                "not good", 
+                "This is not bad at all",
+                "I don't like this movie",
+                "can't recommend this",
+                "The food wasn't good",
+                "It's not amazing but okay",
+                "Never seen anything this bad"
+            ]
+        
+        results = {}
+        print("🧪 Testing Negation Handling:")
+        print("=" * 50)
+        
+        for phrase in test_phrases:
+            tokens = self.preprocess_for_sentiment(phrase, preserve_negation=True)
+            results[phrase] = tokens
+            
+            if debug:
+                print(f"Input: '{phrase}'")
+                print(f"Output: {tokens}")
+                
+                # Check if negation was properly handled
+                negation_found = any(token.startswith('not_') for token in tokens)
+                status = "✅ NEGATION DETECTED" if negation_found else "❌ NO NEGATION"
+                print(f"Status: {status}")
+                print("-" * 30)
+        
+        return results
